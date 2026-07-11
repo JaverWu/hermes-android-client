@@ -11,6 +11,7 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -59,6 +60,11 @@ class ChatActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityChatBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // 保持屏幕常亮
+        if (settings.keepScreenOn) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
 
         // Android 13+ 需要运行时授权才能弹本地通知（"回复了你"提示依赖它）
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -198,6 +204,15 @@ class ChatActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         viewModel.saveDraft(binding.editInput.text?.toString().orEmpty())
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (settings.keepScreenOn) {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 
     private fun updateRunModeMenuItem() {

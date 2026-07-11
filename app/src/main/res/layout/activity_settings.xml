@@ -378,6 +378,107 @@
                 </RadioGroup>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- 卡片：后台与显示 -->
+            <TextView
+                style="@style/SectionLabel"
+                android:layout_marginTop="@dimen/space_xl"
+                android:layout_marginBottom="@dimen/space_xs"
+                android:text="@string/section_background" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/HermesCard"
+                app:contentPadding="@dimen/space_lg">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_keep_screen_on"
+                                android:textSize="16sp"
+                                android:textColor="@color/text_primary" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="@string/settings_keep_screen_on_desc"
+                                android:textSize="13sp"
+                                android:textColor="@color/text_secondary" />
+                        </LinearLayout>
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchKeepScreenOn"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1px"
+                        android:layout_marginTop="@dimen/space_md"
+                        android:layout_marginBottom="@dimen/space_md"
+                        android:background="@color/divider" />
+
+                    <LinearLayout
+                        android:id="@+id/layoutBatteryOptimization"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_battery_optimization"
+                                android:textSize="16sp"
+                                android:textColor="@color/text_primary" />
+
+                            <TextView
+                                android:id="@+id/textBatteryStatus"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="@string/settings_battery_optimization_disabled"
+                                android:textSize="13sp"
+                                android:textColor="@color/text_secondary" />
+                        </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/text_tertiary" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- 卡片3：关于 -->
             <TextView
                 style="@style/SectionLabel"

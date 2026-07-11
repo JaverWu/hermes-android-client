@@ -87,6 +87,15 @@
     <string name="slash_panel_title">斜杠命令</string>
     <string name="slash_panel_hint">搜索命令，如 new / status</string>
 
+    <!-- 后台与显示 -->
+    <string name="section_background">后台与显示</string>
+    <string name="settings_keep_screen_on">保持屏幕常亮</string>
+    <string name="settings_keep_screen_on_desc">聊天页保持屏幕不熄灭，避免后台断连</string>
+    <string name="settings_battery_optimization">允许后台运行</string>
+    <string name="settings_battery_optimization_desc">关闭电池优化以允许后台持续接收回复</string>
+    <string name="settings_battery_optimization_enabled">已允许后台运行</string>
+    <string name="settings_battery_optimization_disabled">点击允许后台运行（推荐）</string>
+
     <!-- 后台运行通知 -->
     <string name="notification_channel_name">Hermes 运行通知</string>
     <string name="notification_channel_desc">对话回复完成等后台运行通知</string>

@@ -47,6 +47,11 @@ class SettingsRepository(context: Context) {
         get() = prefs.getBoolean(KEY_RUN_MODE, false)
         set(v) = prefs.edit().putBoolean(KEY_RUN_MODE, v).apply()
 
+    /** 保持屏幕常亮：聊天页 FLAG_KEEP_SCREEN_ON，避免后台断连 */
+    var keepScreenOn: Boolean
+        get() = prefs.getBoolean(KEY_KEEP_SCREEN_ON, false)
+        set(v) = prefs.edit().putBoolean(KEY_KEEP_SCREEN_ON, v).apply()
+
     // ===== 草稿：按会话 id 缓存未发送的输入，退出再进不丢失 =====
     fun getDraft(conversationId: String): String =
         prefs.getString(KEY_DRAFT + conversationId, "") ?: ""
@@ -72,6 +77,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_USER_AVATAR = "user_avatar_index"
         private const val KEY_AI_AVATAR = "ai_avatar_index"
         private const val KEY_RUN_MODE = "run_mode"
+        private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
         private const val KEY_DRAFT = "draft_"
 
         const val MODE_SYSTEM = "system"

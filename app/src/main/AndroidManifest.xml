@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- WakeLock：切后台/锁屏时保持 CPU 唤醒，确保 SSE 流式回复能被及时读取 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 请求电池优化白名单：后台 SSE 不被 Doze 杀 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Android 9+ 明文流量默认禁止，调试本地后端时可放开（仅 debug 生效） -->
     <application
         android:name=".HermesApplication"
