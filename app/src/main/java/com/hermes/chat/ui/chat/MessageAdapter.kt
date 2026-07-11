@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -13,10 +12,12 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.hermes.chat.R
 import com.hermes.chat.data.local.MessageEntity
+import com.hermes.chat.data.preferences.SettingsRepository
 import com.hermes.chat.databinding.ItemMessageApprovalBinding
 import com.hermes.chat.databinding.ItemMessageAssistantBinding
 import com.hermes.chat.databinding.ItemMessageSystemBinding
 import com.hermes.chat.databinding.ItemMessageUserBinding
+import com.hermes.chat.ui.common.AvatarPresets
 import io.noties.markwon.Markwon
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
 import io.noties.markwon.ext.tables.TablePlugin
@@ -26,14 +27,22 @@ import java.util.Date
 import java.util.Locale
 
 class MessageAdapter(
+    private val settings: SettingsRepository,
     private val onApprovalClick: (MessageEntity, String) -> Unit
 ) : ListAdapter<MessageEntity, RecyclerView.ViewHolder>(DIFF) {
 
     private var markwon: Markwon? = null
     private var streamingAssistantId: String? = null
+    private var thinkingContent: String = ""
+    private var statusText: String = ""
 
     fun setStreamingAssistantId(id: String?) {
         streamingAssistantId = id
+    }
+
+    fun setStreamingState(thinking: String, status: String) {
+        thinkingContent = thinking
+        statusText = status
     }
 
     private fun getMarkwon(context: Context): Markwon {
@@ -65,26 +74,55 @@ class MessageAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val item = getItem(position)
+        val ctx = holder.itemView.context
         when (holder) {
             is UserVH -> {
+                val user = AvatarPresets.user(settings.userAvatarIndex)
+                holder.binding.imageAvatar.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(ContextCompat.getColor(ctx, user.colorRes))
+                holder.binding.textAvatarLetter.text = user.glyph
                 holder.binding.textMessage.text = item.content
                 holder.binding.textTime.text = formatTime(item.createdAt)
             }
             is AssistantVH -> {
+                // 头像（按设置注入颜色 + 字形）
+                val ai = AvatarPresets.ai(settings.aiAvatarIndex)
+                holder.binding.imageAvatar.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(ContextCompat.getColor(ctx, ai.colorRes))
+                holder.binding.textAvatarLetter.text = ai.glyph
+
                 val isStreamingThis = item.id == streamingAssistantId
-                if (item.content.isBlank() && isStreamingThis) {
-                    // 内容为空 + 正在流式 → 显示打字指示器
+                val hasContent = item.content.isNotBlank()
+
+                if (isStreamingThis && !hasContent) {
+                    // 流式且尚未有正文：优先展示思考流，否则展示打字指示器
+                    if (thinkingContent.isNotBlank()) {
+                        holder.binding.layoutThinking.visibility = View.VISIBLE
+                        holder.binding.textThinking.text = thinkingContent
+                        holder.binding.layoutTyping.visibility = View.GONE
+                    } else {
+                        holder.binding.layoutThinking.visibility = View.GONE
+                        holder.binding.layoutTyping.visibility = View.VISIBLE
+                    }
                     holder.binding.textMessage.visibility = View.GONE
-                    holder.binding.layoutTyping.visibility = View.VISIBLE
                 } else {
-                    // 有内容 → 用 Markdown 渲染
-                    holder.binding.textMessage.visibility = View.VISIBLE
+                    holder.binding.layoutThinking.visibility = View.GONE
                     holder.binding.layoutTyping.visibility = View.GONE
-                    getMarkwon(holder.itemView.context).setMarkdown(
+                    holder.binding.textMessage.visibility = View.VISIBLE
+                    getMarkwon(ctx).setMarkdown(
                         holder.binding.textMessage,
-                        if (item.content.isBlank()) "…" else item.content
+                        if (hasContent) item.content else "…"
                     )
                 }
+
+                // 实时状态文字（Hermes 正在思考 / 生成 / 调用工具…）
+                if (isStreamingThis && statusText.isNotBlank()) {
+                    holder.binding.textStatus.visibility = View.VISIBLE
+                    holder.binding.textStatus.text = statusText
+                } else {
+                    holder.binding.textStatus.visibility = View.GONE
+                }
+
                 holder.binding.textTime.text = formatTime(item.createdAt)
             }
             is SystemVH -> holder.binding.textMessage.text = item.content
@@ -134,7 +172,7 @@ class MessageAdapter(
                 binding.layoutOptions.addView(btn, params)
             }
             if (resolved) {
-                val tag = TextView(ctx).apply {
+                val tag = android.widget.TextView(ctx).apply {
                     text = "已处理"
                     setTextColor(gray)
                 }

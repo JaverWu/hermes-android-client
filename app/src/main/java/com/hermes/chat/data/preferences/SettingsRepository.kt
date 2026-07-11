@@ -32,6 +32,16 @@ class SettingsRepository(context: Context) {
         get() = prefs.getString(KEY_NIGHT_MODE, MODE_SYSTEM) ?: MODE_SYSTEM
         set(v) = prefs.edit().putString(KEY_NIGHT_MODE, v).apply()
 
+    /** 用户头像预设索引（见 [com.hermes.chat.ui.common.AvatarPresets.USER]） */
+    var userAvatarIndex: Int
+        get() = prefs.getInt(KEY_USER_AVATAR, 0)
+        set(v) = prefs.edit().putInt(KEY_USER_AVATAR, v).apply()
+
+    /** Hermes 头像预设索引（见 [com.hermes.chat.ui.common.AvatarPresets.AI]） */
+    var aiAvatarIndex: Int
+        get() = prefs.getInt(KEY_AI_AVATAR, 0)
+        set(v) = prefs.edit().putInt(KEY_AI_AVATAR, v).apply()
+
     // 配置只需 API 地址 + Key；模型由 Hermes 默认提供，不再强制要求。
     fun isConfigured(): Boolean =
         baseUrl.isNotBlank() && apiKey.isNotBlank()
@@ -44,6 +54,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_MODEL = "model"
         private const val KEY_SYSTEM_PROMPT = "system_prompt"
         private const val KEY_NIGHT_MODE = "night_mode"
+        private const val KEY_USER_AVATAR = "user_avatar_index"
+        private const val KEY_AI_AVATAR = "ai_avatar_index"
 
         const val MODE_SYSTEM = "system"
         const val MODE_LIGHT = "light"

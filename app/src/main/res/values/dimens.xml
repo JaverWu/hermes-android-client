@@ -1,4 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="approval_btn_radius">16dp</dimen>
+    <!-- 圆角（iOS 风格：气泡大圆角、卡片中圆角） -->
+    <dimen name="bubble_radius">18dp</dimen>
+    <dimen name="card_radius">14dp</dimen>
+    <dimen name="button_radius">12dp</dimen>
+    <dimen name="approval_btn_radius">12dp</dimen>
+    <dimen name="avatar_radius">20dp</dimen>
+
+    <!-- 间距（大留白） -->
+    <dimen name="space_xs">4dp</dimen>
+    <dimen name="space_sm">8dp</dimen>
+    <dimen name="space_md">12dp</dimen>
+    <dimen name="space_lg">16dp</dimen>
+    <dimen name="space_xl">20dp</dimen>
+    <dimen name="space_xxl">24dp</dimen>
+
+    <!-- 头像尺寸 -->
+    <dimen name="avatar_chat_size">30dp</dimen>
+    <dimen name="avatar_chat_large">36dp</dimen>
+    <dimen name="avatar_list_size">48dp</dimen>
+    <dimen name="avatar_picker_size">60dp</dimen>
+
+    <!-- 气泡最大宽度占比 -->
+    <dimen name="bubble_max_width">280dp</dimen>
 </resources>

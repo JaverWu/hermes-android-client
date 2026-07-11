@@ -18,6 +18,10 @@ import java.util.concurrent.TimeUnit
  *
  * 约定：
  *  - 普通内容增量：标准 OpenAI SSE（`data: {"choices":[{"delta":{"content":"..."}}]}`，以 `data: [DONE]` 结束）。
+ *  - 思考流（reasoning）：部分模型在 delta 中携带 `reasoning_content` / `reasoning` / `thinking` 字段，
+ *    用于实时展示 AI 的"思考过程"（类比 TUI 的实时思考流）。
+ *  - 命名事件（状态）：Hermes 可能通过 `event: <type>` 下发结构化状态（如 tool 调用、run 进度等），
+ *    统一回调到 [onStatus]，由上层决定是否展示。
  *  - 审批请求：结构化 SSE 命名事件
  *        event: approval_request
  *        data: {"id":...,"title":...,"detail":...,"options":[...]}
@@ -36,6 +40,8 @@ class HermesApi {
         model: String = "hermes-agent",
         messages: List<ChatMessage>,
         onDelta: (String) -> Unit,
+        onThinking: (String) -> Unit = {},
+        onStatus: (eventType: String, data: String) -> Unit = { _, _ -> },
         onApproval: (ApprovalRequest) -> Unit,
         onDone: () -> Unit,
         onError: (Throwable) -> Unit
@@ -94,10 +100,18 @@ class HermesApi {
                         onDone()
                         return@withContext
                     }
-                    if (eventType == "approval_request") {
-                        parseApproval(data)?.let { onApproval(it) }
-                    } else {
-                        parseContentDelta(data)?.let { onDelta(it) }
+                    when {
+                        // 结构化审批事件
+                        eventType == "approval_request" ->
+                            parseApproval(data)?.let { onApproval(it) }
+                        // 其它命名事件（思考/工具调用/进度等）→ 状态回调
+                        eventType != null ->
+                            onStatus(eventType, data)
+                        // 无事件的普通 chat delta
+                        else -> {
+                            parseContentDelta(data)?.let { onDelta(it) }
+                            parseThinkingDelta(data)?.let { onThinking(it) }
+                        }
                     }
                     eventType = null
                 }
@@ -141,6 +155,21 @@ class HermesApi {
             if (choices.length() == 0) return null
             val delta = choices.getJSONObject(0).optJSONObject("delta") ?: return null
             delta.opt("content") as? String
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    /** 解析思考流字段：reasoning_content / reasoning / thinking（不同模型字段名不同）。 */
+    private fun parseThinkingDelta(data: String): String? {
+        return try {
+            val obj = JSONObject(data)
+            val choices = obj.optJSONArray("choices") ?: return null
+            if (choices.length() == 0) return null
+            val delta = choices.getJSONObject(0).optJSONObject("delta") ?: return null
+            (delta.opt("reasoning_content") as? String)
+                ?: (delta.opt("reasoning") as? String)
+                ?: (delta.opt("thinking") as? String)
         } catch (_: Exception) {
             null
         }

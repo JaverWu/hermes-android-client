@@ -3,30 +3,32 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:paddingStart="8dp"
-    android:paddingTop="6dp"
-    android:paddingEnd="48dp"
-    android:paddingBottom="6dp">
+    android:paddingStart="@dimen/space_lg"
+    android:paddingTop="@dimen/space_sm"
+    android:paddingEnd="@dimen/space_xl"
+    android:paddingBottom="@dimen/space_xs">
 
-    <!-- 助手头像 -->
+    <!-- 助手头像（颜色/字形由 Adapter 按设置注入） -->
     <FrameLayout
-        android:layout_width="36dp"
-        android:layout_height="36dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginTop="2dp">
+        android:layout_width="@dimen/avatar_chat_size"
+        android:layout_height="@dimen/avatar_chat_size"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="@dimen/space_sm">
 
         <ImageView
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="@drawable/bg_circle_blue" />
+            android:id="@+id/imageAvatar"
+            android:layout_width="@dimen/avatar_chat_size"
+            android:layout_height="@dimen/avatar_chat_size"
+            android:background="@drawable/bg_circle_blue"
+            android:scaleType="centerInside" />
 
         <TextView
+            android:id="@+id/textAvatarLetter"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center"
-            android:text="H"
             android:textColor="@color/white"
-            android:textSize="16sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
     </FrameLayout>
 
@@ -36,32 +38,64 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <!-- 思考流（流式期间、有思考内容时显示，TUI 风格实时展示） -->
+        <LinearLayout
+            android:id="@+id/layoutThinking"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_thinking"
+            android:paddingStart="@dimen/space_md"
+            android:paddingTop="@dimen/space_sm"
+            android:paddingEnd="@dimen/space_md"
+            android:paddingBottom="@dimen/space_sm"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/thinking_label"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="@color/tg_blue" />
+
+            <TextView
+                android:id="@+id/textThinking"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:maxWidth="@dimen/bubble_max_width"
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:lineSpacingExtra="2dp" />
+        </LinearLayout>
+
         <!-- 文字气泡（Markdown 渲染） -->
         <TextView
             android:id="@+id/textMessage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:maxWidth="280dp"
+            android:maxWidth="@dimen/bubble_max_width"
             android:background="@drawable/bg_bubble_in"
             android:textColor="@color/bubble_in_text"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
-            android:textSize="15sp"
+            android:paddingStart="@dimen/space_md"
+            android:paddingEnd="@dimen/space_md"
+            android:paddingTop="@dimen/space_sm"
+            android:paddingBottom="@dimen/space_sm"
+            android:textSize="16sp"
             android:lineSpacingExtra="3dp"
             android:textIsSelectable="true" />
 
-        <!-- 打字指示器气泡（content 为空时显示） -->
+        <!-- 打字指示器气泡（content 为空且正在流式时显示） -->
         <FrameLayout
             android:id="@+id/layoutTyping"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_bubble_in"
-            android:paddingStart="18dp"
-            android:paddingEnd="18dp"
-            android:paddingTop="14dp"
-            android:paddingBottom="14dp"
+            android:paddingStart="@dimen/space_lg"
+            android:paddingEnd="@dimen/space_lg"
+            android:paddingTop="@dimen/space_md"
+            android:paddingBottom="@dimen/space_md"
             android:visibility="gone">
 
             <com.hermes.chat.ui.chat.TypingIndicatorView
@@ -69,13 +103,24 @@
                 android:layout_height="wrap_content" />
         </FrameLayout>
 
+        <!-- 实时状态文字（Hermes 正在思考 / 生成 / 调用工具…） -->
+        <TextView
+            android:id="@+id/textStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_xs"
+            android:layout_marginStart="2dp"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/textTime"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="start"
-            android:layout_marginTop="3dp"
-            android:layout_marginStart="4dp"
+            android:layout_marginTop="@dimen/space_xs"
+            android:layout_marginStart="2dp"
             android:textSize="11sp"
             android:textColor="@color/text_secondary" />
     </LinearLayout>

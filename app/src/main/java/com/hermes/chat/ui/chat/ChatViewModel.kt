@@ -35,11 +35,21 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     var streamingAssistantId: String? = null
         private set
 
+    /** 实时思考流（reasoning_content），仅流式期间有效，不落库 */
+    private val _thinkingContent = MutableStateFlow("")
+    val thinkingContent: StateFlow<String> = _thinkingContent
+
+    /** 实时状态文案（正在思考 / 正在生成 / 调用工具…），供 UI 真实反映 Hermes 状态 */
+    private val _statusText = MutableStateFlow("")
+    val statusText: StateFlow<String> = _statusText
+
     private var conversationId: String? = null
     private val streamingBuffer = StringBuilder()
     private var approvalHandledThisTurn = false
     private var streamingTurnId = 0
     private var initialized = false
+    /** 上次把流式内容落库的时间戳，用于节流（≈250ms 一次），避免逐 token 写库 */
+    private var lastPersistTs = 0L
 
     fun init(existingConversationId: String?) {
         if (initialized) return
@@ -47,7 +57,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         if (existingConversationId != null) {
             conversationId = existingConversationId
             viewModelScope.launch(Dispatchers.IO) {
-                _messages.value = db.messageDao().getByConversation(existingConversationId).first()
+                val loaded = db.messageDao().getByConversation(existingConversationId).first()
+                // 清理上次中断流式时遗留的"空助手消息"（无内容且非流式），避免重进看到空白气泡
+                val cleaned = loaded.toMutableList()
+                while (cleaned.isNotEmpty()) {
+                    val last = cleaned.last()
+                    if (last.role == MessageEntity.ROLE_ASSISTANT && last.content.isBlank()) {
+                        val removed = cleaned.removeAt(cleaned.lastIndex)
+                        db.messageDao().deleteById(removed.id)
+                    } else break
+                }
+                _messages.value = cleaned
             }
         }
     }
@@ -134,6 +154,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         _isStreaming.value = true
         streamingBuffer.clear()
         approvalHandledThisTurn = false
+        lastPersistTs = 0L
+        _thinkingContent.value = ""
+        _statusText.value = "Hermes 正在思考…"
 
         val assistantId = newId()
         streamingAssistantId = assistantId
@@ -144,6 +167,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             content = "",
             createdAt = now()
         )
+        // 关键修复：先把空助手消息落库，流式过程中再节流增量更新，
+        // 这样即使中途返回页面、ViewModel 被销毁，已生成的内容也能从 DB 恢复。
         viewModelScope.launch(Dispatchers.IO) { db.messageDao().insert(assistantMsg) }
         appendMessage(assistantMsg)
 
@@ -158,9 +183,21 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 messages = history,
                 onDelta = { delta ->
                     if (streamingAssistantId == null) return@streamChat
+                    if (_statusText.value != "Hermes 正在生成…") {
+                        _statusText.value = "Hermes 正在生成…"
+                    }
                     streamingBuffer.append(delta)
                     val cur = _messages.value.find { it.id == streamingAssistantId } ?: return@streamChat
                     updateMessage(cur.copy(content = streamingBuffer.toString()))
+                    flushStreamingToDb()
+                },
+                onThinking = { t ->
+                    if (streamingAssistantId == null) return@streamChat
+                    _thinkingContent.value = _thinkingContent.value + t
+                },
+                onStatus = { eventType, _ ->
+                    if (streamingAssistantId == null) return@streamChat
+                    _statusText.value = mapStatus(eventType)
                 },
                 onApproval = { req -> handleApproval(req) },
                 onDone = { finalizeTurn(myTurn) },
@@ -169,10 +206,31 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    /** 把当前流式内容节流落库（约每 250ms 一次），确保页面切换后可恢复 */
+    private fun flushStreamingToDb() {
+        val id = streamingAssistantId ?: return
+        val ts = System.currentTimeMillis()
+        if (ts - lastPersistTs < 250) return
+        lastPersistTs = ts
+        val cur = _messages.value.find { it.id == id } ?: return
+        val snapshot = cur.copy(content = streamingBuffer.toString())
+        viewModelScope.launch(Dispatchers.IO) { db.messageDao().update(snapshot) }
+    }
+
+    /** 将 Hermes 下发的命名事件映射为可读状态文案 */
+    private fun mapStatus(eventType: String): String = when {
+        eventType.contains("tool", ignoreCase = true) -> "Hermes 正在调用工具…"
+        eventType.contains("run", ignoreCase = true) -> "Hermes 正在执行…"
+        eventType.contains("search", ignoreCase = true) -> "Hermes 正在检索…"
+        else -> "Hermes 正在处理…"
+    }
+
     private fun handleApproval(req: ApprovalRequest) {
         approvalHandledThisTurn = true
         finalizeAssistant(removeIfBlank = true)
         streamingAssistantId = null
+        _thinkingContent.value = ""
+        _statusText.value = ""
         _isStreaming.value = false
 
         val approvalMsg = MessageEntity(
@@ -210,6 +268,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             finalizeAssistant(removeIfBlank = true)
             streamingAssistantId = null
         }
+        _thinkingContent.value = ""
+        _statusText.value = ""
 
         // 文本兜底：本回合没有结构化审批时，检测助手正文里的指令
         if (!approvalHandledThisTurn) {
@@ -262,6 +322,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         streamingAssistantId = null
+        _thinkingContent.value = ""
+        _statusText.value = ""
         if (myTurn == streamingTurnId) {
             _isStreaming.value = false
         }

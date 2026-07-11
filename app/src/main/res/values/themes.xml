@@ -8,13 +8,13 @@
         <item name="colorAccent">@color/tg_blue</item>
         <!-- 卡片/输入区背景 -->
         <item name="colorSurface">@color/surface</item>
-        <!-- 页面整体背景（会话列表白底） -->
+        <!-- 页面整体背景 -->
         <item name="android:windowBackground">@color/page_bg</item>
-        <!-- 状态栏与导航栏配色 -->
+        <!-- 状态栏（浅色：白底 + 深色图标） -->
         <item name="android:statusBarColor">@color/status_bar</item>
+        <item name="android:windowLightStatusBar">true</item>
         <item name="android:navigationBarColor">@color/page_bg</item>
-        <!-- 关键：targetSdk≥35 时 Android 强制 edge-to-edge(状态栏透明叠加内容)，
-             此处显式退出边到边，恢复传统「状态栏预留空间+蓝底」布局，避免顶栏与潜在闪退 -->
+        <!-- 关键：targetSdk≥35 时 Android 强制 edge-to-edge，此处显式退出，恢复传统布局避免顶栏异常 -->
         <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
         <!-- 字体层级（基础） -->
         <item name="android:textColorPrimary">@color/text_primary</item>
@@ -22,26 +22,61 @@
         <item name="fontFamily">sans-serif</item>
     </style>
 
-    <!-- 工具栏（蓝底白字，左上角导航图标白色） -->
+    <!-- 夜间模式：深色状态栏 + 浅色图标 -->
+    <style name="Theme.HermesChat.Night" parent="Theme.HermesChat">
+        <item name="android:statusBarColor">@color/status_bar</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">@color/page_bg</item>
+    </style>
+
+    <!-- 顶部导航栏（iOS 风：白底、深色标题、底部发丝线由布局内 1dp 分隔线承担） -->
     <style name="Theme.HermesChat.Toolbar" parent="Widget.MaterialComponents.Toolbar">
-        <item name="android:background">?attr/colorPrimary</item>
-        <item name="titleTextColor">@color/text_on_blue</item>
-        <item name="subtitleTextColor">@color/text_on_blue_secondary</item>
-        <item name="navigationIconTint">@color/text_on_blue</item>
+        <item name="android:background">@color/toolbar_bg</item>
+        <item name="titleTextColor">@color/text_primary</item>
+        <item name="subtitleTextColor">@color/text_secondary</item>
+        <item name="navigationIconTint">@color/text_primary</item>
     </style>
 
-    <!-- 聊天顶栏标题（18sp 中粗白字） -->
-    <style name="ToolbarTitle18" parent="TextAppearance.AppCompat">
-        <item name="android:textSize">18sp</item>
+    <!-- ===== iOS 文本层级（TextAppearance） ===== -->
+    <style name="TextAppearance.Hermes.Title" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">17sp</item>
         <item name="android:textStyle">bold</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/text_primary</item>
     </style>
 
-    <!-- 分区小标题 -->
-    <style name="SectionLabel" parent="TextAppearance.AppCompat">
+    <style name="TextAppearance.Hermes.Body" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <style name="TextAppearance.Hermes.Subhead" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">15sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/text_primary</item>
+    </style>
+
+    <style name="TextAppearance.Hermes.Caption" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/text_secondary</item>
+    </style>
+
+    <style name="TextAppearance.Hermes.Footnote" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">12sp</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textColor">@color/text_tertiary</item>
+    </style>
+
+    <!-- 分区小标题（iOS 风格：大写间距灰字） -->
+    <style name="SectionLabel" parent="TextAppearance.Hermes.Caption">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textSize">13sp</item>
-        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:letterSpacing">0.04</item>
         <item name="android:textColor">@color/text_secondary</item>
         <item name="android:paddingStart">4dp</item>
     </style>
@@ -49,8 +84,8 @@
     <!-- 圆角卡片（列表项 / 输入区 / 设置卡片） -->
     <style name="HermesCard" parent="Widget.MaterialComponents.CardView">
         <item name="cardBackgroundColor">@color/surface</item>
-        <item name="cardCornerRadius">16dp</item>
-        <item name="cardElevation">2dp</item>
+        <item name="cardCornerRadius">14dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="cardMaxElevation">0dp</item>
     </style>
-
 </resources>

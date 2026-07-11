@@ -11,14 +11,18 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/toolbar_bg"
+        style="@style/Theme.HermesChat.Toolbar"
         app:title="@string/title_chat"
-        app:titleTextColor="@color/text_on_blue"
-        app:titleTextAppearance="@style/ToolbarTitle18"
-        app:subtitleTextColor="@color/text_on_blue_secondary"
-        app:navigationIcon="@drawable/ic_arrow_back"
-        app:navigationIconTint="@color/text_on_blue"
+        app:titleCentered="true"
+        app:titleTextAppearance="@style/TextAppearance.Hermes.Title"
+        app:subtitleTextColor="@color/text_secondary"
+        app:navigationIcon="@drawable/ic_chevron_left"
         app:menu="@menu/chat_menu" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="@color/toolbar_border" />
 
     <FrameLayout
         android:layout_width="match_parent"
@@ -30,14 +34,17 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:padding="8dp" />
+            android:paddingStart="@dimen/space_lg"
+            android:paddingTop="@dimen/space_lg"
+            android:paddingEnd="@dimen/space_lg"
+            android:paddingBottom="@dimen/space_md" />
 
         <TextView
             android:id="@+id/textEmptyChat"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:layout_margin="24dp"
+            android:layout_margin="@dimen/space_xxl"
             android:gravity="center"
             android:text="@string/empty_chat"
             android:textColor="@color/text_secondary"
@@ -45,58 +52,56 @@
             android:visibility="gone" />
     </FrameLayout>
 
-    <!-- 白色圆角输入条 -->
-    <com.google.android.material.card.MaterialCardView
+    <!-- iOS 风输入条：白底圆角药丸，左侧附件、中间输入框、右侧蓝色发送圆钮 -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="8dp"
-        app:cardBackgroundColor="@color/surface"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="2dp"
-        app:strokeWidth="0dp">
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginStart="@dimen/space_md"
+        android:layout_marginEnd="@dimen/space_md"
+        android:layout_marginTop="@dimen/space_sm"
+        android:layout_marginBottom="@dimen/space_md"
+        android:background="@drawable/bg_input_bar"
+        android:paddingStart="@dimen/space_sm"
+        android:paddingTop="@dimen/space_xs"
+        android:paddingEnd="@dimen/space_xs"
+        android:paddingBottom="@dimen/space_xs">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <ImageButton
+            android:id="@+id/imageAttach"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/action_attach"
+            android:src="@drawable/ic_attach"
+            app:tint="@color/text_secondary" />
+
+        <EditText
+            android:id="@+id/editInput"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:paddingStart="6dp"
-            android:paddingTop="4dp"
-            android:paddingEnd="6dp"
-            android:paddingBottom="4dp"
-            android:gravity="center_vertical">
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:hint="@string/hint_input"
+            android:inputType="textMultiLine|textCapSentences"
+            android:maxLines="6"
+            android:imeOptions="actionSend"
+            android:textSize="16sp"
+            android:textColor="@color/text_primary"
+            android:paddingStart="@dimen/space_md"
+            android:paddingTop="@dimen/space_sm"
+            android:paddingEnd="@dimen/space_sm"
+            android:paddingBottom="@dimen/space_sm" />
 
-            <ImageButton
-                android:id="@+id/imageAttach"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/action_attach"
-                android:src="@drawable/ic_attach"
-                app:tint="@color/text_secondary" />
-
-            <EditText
-                android:id="@+id/editInput"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:background="@android:color/transparent"
-                android:hint="@string/hint_message"
-                android:inputType="textMultiLine|textCapSentences"
-                android:maxLines="6"
-                android:imeOptions="actionSend"
-                android:textSize="15sp"
-                android:textColor="@color/text_primary"
-                android:padding="12dp" />
-
-            <ImageButton
-                android:id="@+id/buttonSend"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="@drawable/bg_circle_blue"
-                android:contentDescription="@string/action_send"
-                android:src="@drawable/ic_send"
-                app:tint="@color/white" />
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+        <ImageButton
+            android:id="@+id/buttonSend"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_circle_blue"
+            android:contentDescription="@string/action_send"
+            android:src="@drawable/ic_arrow_up"
+            app:tint="@color/white" />
+    </LinearLayout>
 
 </LinearLayout>

@@ -11,12 +11,16 @@
     <string name="action_delete">删除</string>
     <string name="action_send">发送</string>
     <string name="action_attach">附件</string>
+    <string name="action_edit_avatar">编辑头像</string>
 
-    <string name="hint_input">输入消息…（回车发送，Shift+回车换行）</string>
+    <string name="hint_input">输入消息…</string>
     <string name="hint_message">消息</string>
     <string name="empty_conversations">还没有对话，点击右下角 + 新建。</string>
     <string name="empty_chat">和 Hermes 开始对话吧</string>
     <string name="typing">Hermes 正在输入…</string>
+    <string name="status_thinking">Hermes 正在思考…</string>
+    <string name="status_generating">Hermes 正在生成…</string>
+    <string name="thinking_label">思考中</string>
 
     <string name="confirm_delete_title">删除对话</string>
     <string name="confirm_delete_msg">确定删除该对话及其所有消息？此操作不可恢复。</string>
@@ -28,9 +32,11 @@
     <string name="profile_name">Hermes</string>
     <string name="profile_subtitle">AI 助手</string>
     <string name="section_connection">连接设置</string>
+    <string name="section_appearance">外观</string>
+    <string name="section_avatar">头像</string>
     <string name="section_about">关于</string>
-    <string name="about_version">Hermes 对话 v1.0.1</string>
-    <string name="about_desc">基于 Hermes 后端的本地聊天客户端，支持流式回复、Markdown 渲染与工具调用审批。</string>
+    <string name="about_version">Hermes 对话 v1.1.0</string>
+    <string name="about_desc">基于 Hermes 后端的本地聊天客户端，支持流式回复、Markdown 渲染、实时思考状态与工具调用审批。</string>
     <string name="settings_base_url">API 地址</string>
     <string name="settings_base_url_hint">这里填入 API 地址（形如 https://your-host/v1）</string>
     <string name="settings_api_key">API 密钥</string>
@@ -41,11 +47,16 @@
     <string name="settings_saved">已保存</string>
 
     <!-- 夜间模式 -->
-    <string name="section_appearance">外观</string>
     <string name="settings_night_mode">夜间模式</string>
     <string name="night_mode_system">跟随系统</string>
     <string name="night_mode_light">日间模式</string>
     <string name="night_mode_dark">夜间模式</string>
+
+    <!-- 头像 -->
+    <string name="avatar_user">我的头像</string>
+    <string name="avatar_ai">Hermes 头像</string>
+    <string name="avatar_change">点击更换</string>
+    <string name="avatar_picker_title">选择头像</string>
 
     <!-- 审批卡片 -->
     <string name="approval_hint">Hermes 请求你的确认</string>

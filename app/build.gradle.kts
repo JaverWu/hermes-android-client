@@ -12,8 +12,8 @@ android {
         applicationId = "com.hermes.chat"
         minSdk = 29          // Android 10.0 及以上
         targetSdk = 36       // 对齐 Android 16，消除兼容性限制
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 3
+        versionName = "1.1.0"
     }
 
     buildTypes {
