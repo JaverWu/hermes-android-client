@@ -119,15 +119,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         val model = settings.model
 
         if (!settings.isConfigured()) {
-            appendMessage(
-                MessageEntity(
-                    id = newId(),
-                    conversationId = conversationId!!,
-                    role = MessageEntity.ROLE_SYSTEM,
-                    content = "请先在「设置」中填写 API 地址和 Key。",
-                    createdAt = now()
-                )
+            val warnMsg = MessageEntity(
+                id = newId(),
+                conversationId = conversationId!!,
+                role = MessageEntity.ROLE_SYSTEM,
+                content = "请先在「设置」中填写 API 地址和 Key。",
+                createdAt = now()
             )
+            viewModelScope.launch(Dispatchers.IO) { db.messageDao().insert(warnMsg) }
+            appendMessage(warnMsg)
             return
         }
 
@@ -137,15 +137,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         val assistantId = newId()
         streamingAssistantId = assistantId
-        appendMessage(
-            MessageEntity(
-                id = assistantId,
-                conversationId = conversationId!!,
-                role = MessageEntity.ROLE_ASSISTANT,
-                content = "",
-                createdAt = now()
-            )
+        val assistantMsg = MessageEntity(
+            id = assistantId,
+            conversationId = conversationId!!,
+            role = MessageEntity.ROLE_ASSISTANT,
+            content = "",
+            createdAt = now()
         )
+        viewModelScope.launch(Dispatchers.IO) { db.messageDao().insert(assistantMsg) }
+        appendMessage(assistantMsg)
 
         val history = buildHistoryForApi()
         val myTurn = ++streamingTurnId
@@ -251,9 +251,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private fun handleError(e: Throwable, myTurn: Int) {
         streamingAssistantId?.let { id ->
             val cur = _messages.value.find { it.id == id }
-            if (cur != null && cur.content.isBlank()) {
-                viewModelScope.launch(Dispatchers.IO) { db.messageDao().deleteById(id) }
-                removeMessage(id)
+            if (cur != null) {
+                if (cur.content.isBlank()) {
+                    viewModelScope.launch(Dispatchers.IO) { db.messageDao().deleteById(id) }
+                    removeMessage(id)
+                } else {
+                    // 保存已接收的部分内容到数据库
+                    viewModelScope.launch(Dispatchers.IO) { db.messageDao().update(cur) }
+                }
             }
         }
         streamingAssistantId = null
@@ -261,15 +266,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             _isStreaming.value = false
         }
         val cid = conversationId ?: return
-        appendMessage(
-            MessageEntity(
-                id = newId(),
-                conversationId = cid,
-                role = MessageEntity.ROLE_SYSTEM,
-                content = "请求出错：${e.message ?: e.javaClass.simpleName}",
-                createdAt = now()
-            )
+        val errorMsg = MessageEntity(
+            id = newId(),
+            conversationId = cid,
+            role = MessageEntity.ROLE_SYSTEM,
+            content = "请求出错：${e.message ?: e.javaClass.simpleName}",
+            createdAt = now()
         )
+        viewModelScope.launch(Dispatchers.IO) { db.messageDao().insert(errorMsg) }
+        appendMessage(errorMsg)
     }
 
     private fun buildHistoryForApi(): List<ChatMessage> {
