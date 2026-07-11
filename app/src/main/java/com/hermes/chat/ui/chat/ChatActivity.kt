@@ -42,6 +42,8 @@ class ChatActivity : AppCompatActivity() {
     private val settings: SettingsRepository by lazy { SettingsRepository(this) }
     private lateinit var adapter: MessageAdapter
     private lateinit var slashAdapter: SlashInlineAdapter
+    /** 插入斜杠命令时抑制 TextWatcher 的面板检测，避免插入后面板闪现。 */
+    private var suppressSlash = false
 
     /** 文件选择器（点击曲别针按钮触发）。 */
     private val filePickerLauncher =
@@ -113,6 +115,7 @@ class ChatActivity : AppCompatActivity() {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 viewModel.saveDraft(s?.toString().orEmpty())
+                if (suppressSlash) return
 
                 // 键入 "/" 时显示内联斜杠命令半屏弹板，实时过滤候选
                 val text = s?.toString().orEmpty()
@@ -278,14 +281,20 @@ class ChatActivity : AppCompatActivity() {
         binding.layoutSlashInline.visibility = View.GONE
     }
 
-    /** 把选中的斜杠命令插入输入框光标处。 */
+    /**
+     * 把选中的斜杠命令替换进输入框：找到光标前最后一个 "/"，
+     * 用命令整体替换「该 "/" 到光标」之间的文本，避免出现 //new / /us/usage。
+     */
     private fun insertCommand(cmd: String) {
         val et = binding.editInput
         val editable = et.text ?: return
-        val start = et.selectionStart.coerceAtLeast(0)
-        val end = et.selectionEnd.coerceAtLeast(0)
-        editable.replace(start, end, cmd)
-        et.setSelection(start + cmd.length)
+        val cursor = et.selectionStart.coerceAtLeast(0)
+        val lastSlash = editable.lastIndexOf('/', cursor - 1)
+        val replaceStart = if (lastSlash >= 0) lastSlash else cursor
+        suppressSlash = true
+        editable.replace(replaceStart, cursor, cmd)
+        suppressSlash = false
+        et.setSelection(replaceStart + cmd.length)
         et.requestFocus()
     }
 
