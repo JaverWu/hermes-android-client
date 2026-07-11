@@ -33,6 +33,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import java.util.UUID
 
 /**
@@ -316,19 +317,27 @@ class RunWatcherService : Service() {
 
     private fun finalizeTurn() {
         val id = assistantId ?: return finishService()
-        val content = buffer.toString()
+        val bufferContent = buffer.toString()
         val reasoning = reasoningBuffer.toString()
         val toolJson = ActiveRunState.toolCalls.value[id]?.toJsonString() ?: ""
-        Log.i("RunWatcher", "finalizeTurn: content=${content.length} chars, reasoning=${reasoning.length} chars, tools=${toolJson.length} chars")
+        Log.i("RunWatcher", "finalizeTurn: buffer=${bufferContent.length} chars, reasoning=${reasoning.length} chars, tools=${toolJson.length} chars")
 
-        scope.launch {
-            db.messageDao().getById(id)?.let { row ->
-                if (content.isBlank() && reasoning.isBlank() && toolJson.isBlank()) {
+        // 用 runBlocking 确保 DB 写入完成后再 finishService，避免 scope.cancel 取消写入
+        runBlocking {
+            val row = db.messageDao().getById(id)
+            if (row != null) {
+                // buffer 为空时用 DB 已有内容作为 fallback（重试场景：resetBuffers 清了 buffer 但 DB 有上一轮的内容）
+                val finalContent = bufferContent.ifBlank { row.content }
+                val finalReasoning = reasoning.ifBlank { row.reasoning }
+                val finalToolJson = toolJson.ifBlank { row.toolCallsJson }
+
+                if (finalContent.isBlank() && finalReasoning.isBlank() && finalToolJson.isBlank()) {
                     Log.i("RunWatcher", "finalizeTurn: empty turn, deleting placeholder")
                     db.messageDao().deleteById(id)
                 } else {
+                    Log.i("RunWatcher", "finalizeTurn: saving ${finalContent.length} chars to DB (buffer=${bufferContent.length}, dbFallback=${row.content.length})")
                     db.messageDao().update(
-                        row.copy(content = content, reasoning = reasoning, toolCallsJson = toolJson, isStreaming = false)
+                        row.copy(content = finalContent, reasoning = finalReasoning, toolCallsJson = finalToolJson, isStreaming = false)
                     )
                 }
             }
@@ -363,24 +372,30 @@ class RunWatcherService : Service() {
         }
 
         ActiveRunState.reset()
-        notifyDone("Hermes 回复了你", content.take(120).ifBlank { "点击查看完整回复" })
+        // 通知用 bufferContent（本轮新内容），如果空则用通用提示
+        val notifText = bufferContent.take(120).ifBlank { "点击查看完整回复" }
+        notifyDone("Hermes 回复了你", notifText)
         finishService()
     }
 
     private fun handleApproval(req: ApprovalRequest) {
         approvalHandled = true
         val id = assistantId ?: return
-        val content = buffer.toString()
+        val bufferContent = buffer.toString()
         val reasoning = reasoningBuffer.toString()
         val toolJson = ActiveRunState.toolCalls.value[id]?.toJsonString() ?: ""
         Log.i("RunWatcher", "handleApproval: title=${req.title}")
-        scope.launch {
-            db.messageDao().getById(id)?.let { row ->
-                if (content.isBlank() && reasoning.isBlank() && toolJson.isBlank()) {
+        runBlocking {
+            val row = db.messageDao().getById(id)
+            if (row != null) {
+                val finalContent = bufferContent.ifBlank { row.content }
+                val finalReasoning = reasoning.ifBlank { row.reasoning }
+                val finalToolJson = toolJson.ifBlank { row.toolCallsJson }
+                if (finalContent.isBlank() && finalReasoning.isBlank() && finalToolJson.isBlank()) {
                     db.messageDao().deleteById(id)
                 } else {
                     db.messageDao().update(
-                        row.copy(content = content, reasoning = reasoning, toolCallsJson = toolJson, isStreaming = false)
+                        row.copy(content = finalContent, reasoning = finalReasoning, toolCallsJson = finalToolJson, isStreaming = false)
                     )
                 }
             }
@@ -406,22 +421,40 @@ class RunWatcherService : Service() {
     private fun handleError(e: Throwable) {
         Log.e("RunWatcher", "handleError: ${e.javaClass.simpleName}: ${e.message}")
         val id = assistantId
-        val content = buffer.toString()
+        val bufferContent = buffer.toString()
         val reasoning = reasoningBuffer.toString()
         val toolJson = if (id != null) ActiveRunState.toolCalls.value[id]?.toJsonString() ?: "" else ""
-        scope.launch {
+
+        runBlocking {
             if (id != null) {
-                db.messageDao().getById(id)?.let { row ->
-                    if (content.isBlank() && reasoning.isBlank() && toolJson.isBlank()) {
+                val row = db.messageDao().getById(id)
+                if (row != null) {
+                    // buffer 为空时用 DB 已有内容作为 fallback
+                    val finalContent = bufferContent.ifBlank { row.content }
+                    val finalReasoning = reasoning.ifBlank { row.reasoning }
+                    val finalToolJson = toolJson.ifBlank { row.toolCallsJson }
+
+                    if (finalContent.isBlank() && finalReasoning.isBlank() && finalToolJson.isBlank()) {
+                        Log.i("RunWatcher", "handleError: empty turn, deleting placeholder")
                         db.messageDao().deleteById(id)
                     } else {
+                        Log.i("RunWatcher", "handleError: saving ${finalContent.length} chars to DB (buffer=${bufferContent.length}, dbFallback=${row.content.length})")
                         db.messageDao().update(
-                            row.copy(content = content, reasoning = reasoning, toolCallsJson = toolJson, isStreaming = false)
+                            row.copy(content = finalContent, reasoning = finalReasoning, toolCallsJson = finalToolJson, isStreaming = false)
                         )
                     }
                 }
             }
-            postSystemMessage("请求出错：${e.message ?: e.javaClass.simpleName}")
+            // 直接同步插入系统消息（不用 postSystemMessage 的 scope.launch，避免被 cancel）
+            db.messageDao().insert(
+                MessageEntity(
+                    id = UUID.randomUUID().toString(),
+                    conversationId = conversationId!!,
+                    role = MessageEntity.ROLE_SYSTEM,
+                    content = "请求出错：${e.message ?: e.javaClass.simpleName}",
+                    createdAt = System.currentTimeMillis()
+                )
+            )
         }
         ActiveRunState.reset()
         notifyDone("Hermes 请求出错", e.message ?: e.javaClass.simpleName)
