@@ -10,20 +10,24 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.hermes.chat.R
 import com.hermes.chat.data.local.MessageEntity
 import com.hermes.chat.data.model.ToolCall
 import com.hermes.chat.data.preferences.SettingsRepository
 import com.hermes.chat.databinding.ActivityChatBinding
 import com.hermes.chat.databinding.ItemToolChipBinding
+import com.hermes.chat.databinding.ItemSlashCommandBinding
 import com.hermes.chat.ui.common.AvatarPresets
 import com.hermes.chat.ui.common.AvatarRole
 import com.hermes.chat.ui.common.showAvatarPicker
@@ -37,6 +41,17 @@ class ChatActivity : AppCompatActivity() {
     private val viewModel: ChatViewModel by viewModels()
     private val settings: SettingsRepository by lazy { SettingsRepository(this) }
     private lateinit var adapter: MessageAdapter
+    private lateinit var slashAdapter: SlashInlineAdapter
+
+    /** 文件选择器（点击曲别针按钮触发）。 */
+    private val filePickerLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            uri?.let { selectedUri ->
+                val name = selectedUri.path?.substringAfterLast('/')
+                    ?: selectedUri.toString()
+                Toast.makeText(this, "已选择文件: $name", Toast.LENGTH_SHORT).show()
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,13 +98,31 @@ class ChatActivity : AppCompatActivity() {
         binding.recyclerMessages.layoutManager = LinearLayoutManager(this)
         binding.recyclerMessages.adapter = adapter
 
-        // 草稿回填：进入会话时恢复未发送的输入
+        // ── 内联斜杠命令弹板 ──
+        slashAdapter = SlashInlineAdapter(SlashCommands.all) { cmd ->
+            insertCommand(cmd)
+            hideSlashInline()
+        }
+        binding.listSlashInline.layoutManager = LinearLayoutManager(this)
+        binding.listSlashInline.adapter = slashAdapter
+
+        // 草稿回填 + 斜杠命令检测（合并到一个 TextWatcher）
         binding.editInput.setText(viewModel.loadDraft())
         binding.editInput.setSelection(binding.editInput.text?.length ?: 0)
         binding.editInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 viewModel.saveDraft(s?.toString().orEmpty())
+
+                // 键入 "/" 时显示内联斜杠命令半屏弹板，实时过滤候选
+                val text = s?.toString().orEmpty()
+                if (text.contains("/")) {
+                    val lastSlash = text.lastIndexOf('/')
+                    val query = text.substring(lastSlash + 1)
+                    showSlashInline(query)
+                } else {
+                    hideSlashInline()
+                }
             }
             override fun afterTextChanged(s: Editable?) {}
         })
@@ -98,8 +131,8 @@ class ChatActivity : AppCompatActivity() {
         binding.editInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEND) { send(); true } else false
         }
-        // 左侧按钮：打开斜杠命令面板（官方聊天命令 /new /status 等）
-        binding.imageAttach.setOnClickListener { openSlashPanel() }
+        // 左侧曲别针：打开文件选择器
+        binding.imageAttach.setOnClickListener { filePickerLauncher.launch("*/*") }
 
         lifecycleScope.launch {
             viewModel.messages.collect { list ->
@@ -234,11 +267,18 @@ class ChatActivity : AppCompatActivity() {
         viewModel.sendUserMessage(text)
     }
 
-    private fun openSlashPanel() {
-        SlashCommandPanel(this) { cmd -> insertCommand(cmd) }.show()
+    /** 显示内联斜杠命令半屏弹板，按 [query] 实时过滤。 */
+    private fun showSlashInline(query: String) {
+        slashAdapter.filter(query)
+        binding.layoutSlashInline.visibility = View.VISIBLE
     }
 
-    /** 把选中的斜杠命令插入输入框光标处 */
+    /** 隐藏内联斜杠命令弹板。 */
+    private fun hideSlashInline() {
+        binding.layoutSlashInline.visibility = View.GONE
+    }
+
+    /** 把选中的斜杠命令插入输入框光标处。 */
     private fun insertCommand(cmd: String) {
         val et = binding.editInput
         val editable = et.text ?: return
@@ -257,4 +297,45 @@ class ChatActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_CONVERSATION_ID = "conversation_id"
     }
+}
+
+/**
+ * 内联斜杠命令列表适配器（复用 [item_slash_command.xml] 布局，
+ * 在输入框上方半屏显示，支持按名称/描述/分组过滤）。
+ */
+class SlashInlineAdapter(
+    private val source: List<SlashCommand>,
+    private val onClick: (String) -> Unit
+) : RecyclerView.Adapter<SlashInlineAdapter.VH>() {
+
+    private var items = source.toList()
+
+    fun filter(q: String) {
+        val ql = q.lowercase().trim()
+        items = if (ql.isBlank()) source else source.filter {
+            it.command.lowercase().contains(ql) ||
+                it.description.lowercase().contains(ql) ||
+                it.group.lowercase().contains(ql)
+        }
+        notifyDataSetChanged()
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
+        val b = ItemSlashCommandBinding.inflate(
+            LayoutInflater.from(parent.context), parent, false
+        )
+        return VH(b)
+    }
+
+    override fun getItemCount(): Int = items.size
+
+    override fun onBindViewHolder(holder: VH, position: Int) {
+        val c = items[position]
+        holder.b.textCommand.text = c.command
+        holder.b.textDesc.text = c.description
+        holder.b.textGroup.text = c.group
+        holder.b.root.setOnClickListener { onClick(c.command) }
+    }
+
+    class VH(val b: ItemSlashCommandBinding) : RecyclerView.ViewHolder(b.root)
 }

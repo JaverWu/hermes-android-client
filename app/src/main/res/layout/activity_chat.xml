@@ -97,6 +97,25 @@
             android:visibility="gone" />
     </FrameLayout>
 
+    <!-- 内联斜杠命令弹板：输入框键入 / 时半屏弹出，选后插入 -->
+    <FrameLayout
+        android:id="@+id/layoutSlashInline"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:background="@color/surface"
+        android:elevation="4dp"
+        android:visibility="gone">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/listSlashInline"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:paddingTop="@dimen/space_sm"
+            android:paddingBottom="@dimen/space_sm" />
+
+    </FrameLayout>
+
     <!-- iOS 风输入条：白底圆角药丸，左侧附件、中间输入框、右侧蓝色发送圆钮 -->
     <LinearLayout
         android:layout_width="match_parent"
