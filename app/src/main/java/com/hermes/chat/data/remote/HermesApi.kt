@@ -133,7 +133,7 @@ class HermesApi {
         onError: (Throwable) -> Unit
     ) {
         try {
-            Log.d("HermesApi", "streamLoop starting")
+            Log.i("HermesApi", "streamLoop starting")
             consumeSse(request) { eventType, data ->
                 when {
                     eventType == "approval_request" ->
@@ -157,19 +157,19 @@ class HermesApi {
                     }
                 }
             }
-            Log.d("HermesApi", "streamLoop completed normally → onDone")
+            Log.i("HermesApi", "streamLoop completed normally → onDone")
             onDone()
         } catch (e: Exception) {
-            Log.d("HermesApi", "streamLoop error: ${e.javaClass.simpleName}: ${e.message}")
+            Log.i("HermesApi", "streamLoop error: ${e.javaClass.simpleName}: ${e.message}")
             onError(e)
         }
     }
 
     /** 读取 SSE：`event:` 设置事件类型，`data:` 回调 (eventType, data)。`data: [DONE]` 结束循环。 */
     private fun consumeSse(request: Request, onEvent: (eventType: String?, data: String) -> Unit) {
-        Log.d("HermesApi", "SSE execute → ${request.url}")
+        Log.i("HermesApi", "SSE execute → ${request.url}")
         val response = client.newCall(request).execute()
-        Log.d("HermesApi", "SSE response HTTP ${response.code}")
+        Log.i("HermesApi", "SSE response HTTP ${response.code}")
         if (!response.isSuccessful) {
             throw java.io.IOException("HTTP ${response.code}: ${response.body?.string().orEmpty()}")
         }
@@ -189,16 +189,16 @@ class HermesApi {
             if (line.startsWith("data:")) {
                 val data = line.substring(5).trim()
                 if (data == "[DONE]") {
-                    Log.d("HermesApi", "SSE received [DONE] after $lineCount lines, $dataEventCount data events")
+                    Log.i("HermesApi", "SSE received [DONE] after $lineCount lines, $dataEventCount data events")
                     return
                 }
                 dataEventCount++
-                if (lineCount <= 5) Log.d("HermesApi", "SSE line: $line")
+                if (lineCount <= 5) Log.i("HermesApi", "SSE line: $line")
                 onEvent(eventType, data)
                 eventType = null
             }
         }
-        Log.d("HermesApi", "SSE stream ended after $lineCount lines, $dataEventCount data events (readUtf8Line returned null)")
+        Log.i("HermesApi", "SSE stream ended after $lineCount lines, $dataEventCount data events (readUtf8Line returned null)")
         // 空流检测：连接被关闭但没收到任何 data: 行，说明是异常断开而非正常结束。
         // 抛出异常走 onError 路径触发重试，而不是被当成成功（onDone → finalizeTurn 删除占位消息）。
         if (dataEventCount == 0) {

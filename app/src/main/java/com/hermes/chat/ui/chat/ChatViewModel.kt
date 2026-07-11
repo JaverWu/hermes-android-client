@@ -2,6 +2,7 @@ package com.hermes.chat.ui.chat
 
 import android.app.Application
 import android.content.Intent
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -137,7 +138,24 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 putExtra(RunWatcherService.EXTRA_CONVERSATION_ID, cid)
                 putExtra(RunWatcherService.EXTRA_ASSISTANT_ID, assistantId)
             }
-            ContextCompat.startForegroundService(getApplication(), intent)
+            try {
+                Log.i("ChatVM", "startForegroundService cid=$cid aid=$assistantId")
+                ContextCompat.startForegroundService(getApplication(), intent)
+            } catch (e: Exception) {
+                Log.e("ChatVM", "startForegroundService FAILED: ${e.javaClass.simpleName}: ${e.message}", e)
+                // Service 启动失败：落一条系统消息告知用户，并清理占位
+                db.messageDao().deleteById(assistantId)
+                ActiveRunState.reset()
+                db.messageDao().insert(
+                    MessageEntity(
+                        id = newId(),
+                        conversationId = cid,
+                        role = MessageEntity.ROLE_SYSTEM,
+                        content = "无法启动后台服务：${e.message ?: e.javaClass.simpleName}",
+                        createdAt = now()
+                    )
+                )
+            }
         }
     }
 
