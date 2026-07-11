@@ -148,8 +148,9 @@ class ChatActivity : AppCompatActivity() {
                 adapter.setStreamingAssistantId(viewModel.streamingAssistantId.value)
                 adapter.setStreamingState(viewModel.thinkingContent.value, viewModel.statusText.value)
                 adapter.liveContent = viewModel.liveContent.value
+                val wasAtBottom = isAtBottom()
                 adapter.submitList(list) {
-                    if (list.isNotEmpty()) {
+                    if (list.isNotEmpty() && wasAtBottom) {
                         binding.recyclerMessages.scrollToPosition(list.lastIndex)
                     }
                 }
@@ -167,7 +168,7 @@ class ChatActivity : AppCompatActivity() {
                 adapter.setStreamingState(it, viewModel.statusText.value)
                 adapter.setStreamingAssistantId(viewModel.streamingAssistantId.value)
                 adapter.liveContent = viewModel.liveContent.value
-                adapter.notifyItemRangeChanged(0, adapter.itemCount)
+                notifyStreamingItemChanged()
             }
         }
         lifecycleScope.launch {
@@ -175,20 +176,21 @@ class ChatActivity : AppCompatActivity() {
                 adapter.setStreamingState(viewModel.thinkingContent.value, it)
                 adapter.setStreamingAssistantId(viewModel.streamingAssistantId.value)
                 adapter.liveContent = viewModel.liveContent.value
-                adapter.notifyItemRangeChanged(0, adapter.itemCount)
+                notifyStreamingItemChanged()
             }
         }
         lifecycleScope.launch {
             viewModel.liveContent.collect { c ->
                 adapter.liveContent = c
                 adapter.setStreamingAssistantId(viewModel.streamingAssistantId.value)
-                adapter.notifyItemRangeChanged(0, adapter.itemCount)
+                notifyStreamingItemChanged()
+                scrollToBottomIfAtBottom()
             }
         }
         lifecycleScope.launch {
             viewModel.streamingAssistantId.collect { id ->
                 adapter.setStreamingAssistantId(id)
-                adapter.notifyItemRangeChanged(0, adapter.itemCount)
+                notifyStreamingItemChanged()
             }
         }
         lifecycleScope.launch {
@@ -213,6 +215,27 @@ class ChatActivity : AppCompatActivity() {
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
+    }
+
+    /** 检查用户是否在列表底部附近（用于判断是否需要自动滚动） */
+    private fun isAtBottom(): Boolean {
+        val lm = binding.recyclerMessages.layoutManager as? LinearLayoutManager ?: return false
+        val lastVisible = lm.findLastCompletelyVisibleItemPosition()
+        return lastVisible >= adapter.itemCount - 2
+    }
+
+    /** 滚动到最后一条（仅在用户已在底部时才滚） */
+    private fun scrollToBottomIfAtBottom() {
+        if (isAtBottom()) {
+            binding.recyclerMessages.scrollToPosition(adapter.itemCount - 1)
+        }
+    }
+
+    /** 只刷新当前 streaming 的助手消息 item，避免全量刷新导致跳动 */
+    private fun notifyStreamingItemChanged() {
+        val sid = viewModel.streamingAssistantId.value ?: return
+        val pos = adapter.currentList.indexOfFirst { it.id == sid }
+        if (pos >= 0) adapter.notifyItemChanged(pos)
     }
 
     private fun updateRunModeMenuItem() {

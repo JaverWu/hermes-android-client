@@ -48,7 +48,7 @@ class RunWatcherService : Service() {
     companion object {
         const val EXTRA_CONVERSATION_ID = "conversation_id"
         const val EXTRA_ASSISTANT_ID = "assistant_id"
-        private const val CHANNEL_ID = "hermes_run"
+        private const val CHANNEL_ID = "hermes_run_high"
         private const val NOTIF_ID = 1001
     }
 
@@ -486,8 +486,12 @@ class RunWatcherService : Service() {
                 val channel = NotificationChannel(
                     CHANNEL_ID,
                     getString(R.string.notification_channel_name),
-                    NotificationManager.IMPORTANCE_DEFAULT
-                ).apply { description = getString(R.string.notification_channel_desc) }
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = getString(R.string.notification_channel_desc)
+                    enableVibration(true)
+                    enableLights(true)
+                }
                 mgr.createNotificationChannel(channel)
             }
         }
@@ -532,6 +536,9 @@ class RunWatcherService : Service() {
             .setLargeIcon(logoBitmap)
             .setContentIntent(pi)
             .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
             .build()
         val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         mgr.notify(NOTIF_ID, notif)
