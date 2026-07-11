@@ -53,6 +53,7 @@ class ChatActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             viewModel.messages.collect { list ->
+                adapter.setStreamingAssistantId(viewModel.streamingAssistantId)
                 adapter.submitList(list) {
                     if (list.isNotEmpty()) {
                         binding.recyclerMessages.scrollToPosition(list.lastIndex)
@@ -65,6 +66,7 @@ class ChatActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.isStreaming.collect { streaming ->
                 binding.buttonSend.isEnabled = !streaming
+                adapter.setStreamingAssistantId(viewModel.streamingAssistantId)
             }
         }
     }

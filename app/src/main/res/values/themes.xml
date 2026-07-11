@@ -11,7 +11,7 @@
         <!-- 页面整体背景（会话列表白底） -->
         <item name="android:windowBackground">@color/page_bg</item>
         <!-- 状态栏与导航栏配色 -->
-        <item name="android:statusBarColor">@color/tg_blue_dark</item>
+        <item name="android:statusBarColor">@color/status_bar</item>
         <item name="android:navigationBarColor">@color/page_bg</item>
         <!-- 关键：targetSdk≥35 时 Android 强制 edge-to-edge(状态栏透明叠加内容)，
              此处显式退出边到边，恢复传统「状态栏预留空间+蓝底」布局，避免顶栏与潜在闪退 -->

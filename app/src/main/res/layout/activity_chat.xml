@@ -11,7 +11,7 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/tg_blue"
+        android:background="@color/toolbar_bg"
         app:title="@string/title_chat"
         app:titleTextColor="@color/text_on_blue"
         app:titleTextAppearance="@style/ToolbarTitle18"

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ===== 夜间模式配色 ===== -->
+
+    <!-- 主色保持蓝，但稍暗 -->
+    <color name="tg_blue">#2B7CD3</color>
+    <color name="tg_blue_dark">#1E5FA8</color>
+    <color name="tg_blue_pressed">#185090</color>
+
+    <!-- 页面与卡片背景 -->
+    <color name="page_bg">#0E1113</color>
+    <color name="chat_bg">#0E1113</color>
+    <color name="surface">#1C2025</color>
+
+    <!-- 工具栏 / 状态栏（夜间深灰底） -->
+    <color name="toolbar_bg">#1A1D21</color>
+    <color name="status_bar">#111416</color>
+
+    <!-- 代码块背景 -->
+    <color name="code_block_bg">#14171A</color>
+    <color name="code_block_text">#E6A0A0</color>
+
+    <!-- 气泡（收进） -->
+    <color name="bubble_in_bg">#1C2025</color>
+    <color name="bubble_in_border">#2A2D31</color>
+    <color name="bubble_in_text">#E6E8EB</color>
+
+    <!-- 气泡（发出） -->
+    <color name="bubble_out_bg">#2B7CD3</color>
+    <color name="bubble_out_text">#FFFFFF</color>
+
+    <!-- 文本 -->
+    <color name="text_primary">#E6E8EB</color>
+    <color name="text_secondary">#6B6F76</color>
+    <color name="text_on_blue">#FFFFFF</color>
+    <color name="text_on_blue_secondary">#B3FFFFFF</color>
+
+    <!-- 分隔线 -->
+    <color name="divider">#2A2D31</color>
+
+    <!-- 系统消息背景 -->
+    <color name="system_bg">#1C2025</color>
+
+    <!-- 审批卡片（夜间暖棕） -->
+    <color name="approval_bg">#2A2118</color>
+    <color name="approval_border">#4A3D20</color>
+    <color name="approval_title">#F0B050</color>
+    <color name="approval_btn_bg">#2B7CD3</color>
+    <color name="approval_btn_text">#FFFFFF</color>
+
+    <!-- 头像调色板（夜间略暗） -->
+    <color name="avatar_1">#C45A60</color>
+    <color name="avatar_2">#6BA852</color>
+    <color name="avatar_3">#5590BD</color>
+    <color name="avatar_4">#9085D7</color>
+    <color name="avatar_5">#D06A9E</color>
+    <color name="avatar_6">#D0884E</color>
+
+    <!-- 兼容旧引用 -->
+    <color name="hermes_primary">#2B7CD3</color>
+    <color name="hermes_primary_dark">#1E5FA8</color>
+    <color name="hermes_on_primary">#FFFFFF</color>
+    <color name="bubble_user">#2B7CD3</color>
+    <color name="bubble_user_text">#FFFFFF</color>
+    <color name="bubble_assistant">#1C2025</color>
+    <color name="bubble_assistant_text">#E6E8EB</color>
+    <color name="bubble_assistant_border">#2A2D31</color>
+    <color name="approval_text">#F0B050</color>
+    <color name="system_text">#6B6F76</color>
+</resources>

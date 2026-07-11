@@ -27,6 +27,11 @@ class SettingsRepository(context: Context) {
         get() = prefs.getString(KEY_SYSTEM_PROMPT, "") ?: ""
         set(v) = prefs.edit().putString(KEY_SYSTEM_PROMPT, v).apply()
 
+    /** 夜间模式："system"（跟随系统）/ "light" / "dark" */
+    var nightMode: String
+        get() = prefs.getString(KEY_NIGHT_MODE, MODE_SYSTEM) ?: MODE_SYSTEM
+        set(v) = prefs.edit().putString(KEY_NIGHT_MODE, v).apply()
+
     // 配置只需 API 地址 + Key；模型由 Hermes 默认提供，不再强制要求。
     fun isConfigured(): Boolean =
         baseUrl.isNotBlank() && apiKey.isNotBlank()
@@ -38,5 +43,10 @@ class SettingsRepository(context: Context) {
         private const val KEY_API_KEY = "api_key"
         private const val KEY_MODEL = "model"
         private const val KEY_SYSTEM_PROMPT = "system_prompt"
+        private const val KEY_NIGHT_MODE = "night_mode"
+
+        const val MODE_SYSTEM = "system"
+        const val MODE_LIGHT = "light"
+        const val MODE_DARK = "dark"
     }
 }

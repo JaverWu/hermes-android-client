@@ -1,23 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:orientation="horizontal"
     android:paddingStart="8dp"
-    android:paddingTop="4dp"
+    android:paddingTop="6dp"
     android:paddingEnd="48dp"
-    android:paddingBottom="4dp">
+    android:paddingBottom="6dp">
 
+    <!-- 助手头像 -->
+    <FrameLayout
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="2dp">
+
+        <ImageView
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_circle_blue" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="H"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </FrameLayout>
+
+    <!-- 气泡区域 -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="start"
         android:orientation="vertical">
 
+        <!-- 文字气泡（Markdown 渲染） -->
         <TextView
             android:id="@+id/textMessage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:maxWidth="300dp"
+            android:maxWidth="280dp"
             android:background="@drawable/bg_bubble_in"
             android:textColor="@color/bubble_in_text"
             android:paddingStart="14dp"
@@ -25,8 +49,25 @@
             android:paddingTop="10dp"
             android:paddingBottom="10dp"
             android:textSize="15sp"
-            android:lineSpacingExtra="2dp"
+            android:lineSpacingExtra="3dp"
             android:textIsSelectable="true" />
+
+        <!-- 打字指示器气泡（content 为空时显示） -->
+        <FrameLayout
+            android:id="@+id/layoutTyping"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_bubble_in"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:paddingTop="14dp"
+            android:paddingBottom="14dp"
+            android:visibility="gone">
+
+            <com.hermes.chat.ui.chat.TypingIndicatorView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/textTime"
@@ -34,7 +75,8 @@
             android:layout_height="wrap_content"
             android:layout_gravity="start"
             android:layout_marginTop="3dp"
-            android:textSize="12sp"
+            android:layout_marginStart="4dp"
+            android:textSize="11sp"
             android:textColor="@color/text_secondary" />
     </LinearLayout>
-</FrameLayout>
+</LinearLayout>

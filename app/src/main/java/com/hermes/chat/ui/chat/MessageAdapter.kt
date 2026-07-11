@@ -1,8 +1,10 @@
 package com.hermes.chat.ui.chat
 
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
@@ -15,6 +17,9 @@ import com.hermes.chat.databinding.ItemMessageApprovalBinding
 import com.hermes.chat.databinding.ItemMessageAssistantBinding
 import com.hermes.chat.databinding.ItemMessageSystemBinding
 import com.hermes.chat.databinding.ItemMessageUserBinding
+import io.noties.markwon.Markwon
+import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
+import io.noties.markwon.ext.tables.TablePlugin
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -23,6 +28,23 @@ import java.util.Locale
 class MessageAdapter(
     private val onApprovalClick: (MessageEntity, String) -> Unit
 ) : ListAdapter<MessageEntity, RecyclerView.ViewHolder>(DIFF) {
+
+    private var markwon: Markwon? = null
+    private var streamingAssistantId: String? = null
+
+    fun setStreamingAssistantId(id: String?) {
+        streamingAssistantId = id
+    }
+
+    private fun getMarkwon(context: Context): Markwon {
+        if (markwon == null) {
+            markwon = Markwon.builder(context)
+                .usePlugin(StrikethroughPlugin.create())
+                .usePlugin(TablePlugin.create(context))
+                .build()
+        }
+        return markwon!!
+    }
 
     override fun getItemViewType(position: Int): Int = when (getItem(position).role) {
         MessageEntity.ROLE_USER -> VIEW_USER
@@ -49,8 +71,20 @@ class MessageAdapter(
                 holder.binding.textTime.text = formatTime(item.createdAt)
             }
             is AssistantVH -> {
-                holder.binding.textMessage.text =
-                    if (item.content.isBlank()) "Hermes 正在输入…" else item.content
+                val isStreamingThis = item.id == streamingAssistantId
+                if (item.content.isBlank() && isStreamingThis) {
+                    // 内容为空 + 正在流式 → 显示打字指示器
+                    holder.binding.textMessage.visibility = View.GONE
+                    holder.binding.layoutTyping.visibility = View.VISIBLE
+                } else {
+                    // 有内容 → 用 Markdown 渲染
+                    holder.binding.textMessage.visibility = View.VISIBLE
+                    holder.binding.layoutTyping.visibility = View.GONE
+                    getMarkwon(holder.itemView.context).setMarkdown(
+                        holder.binding.textMessage,
+                        if (item.content.isBlank()) "…" else item.content
+                    )
+                }
                 holder.binding.textTime.text = formatTime(item.createdAt)
             }
             is SystemVH -> holder.binding.textMessage.text = item.content
@@ -64,7 +98,7 @@ class MessageAdapter(
     class ApprovalVH(val binding: ItemMessageApprovalBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: MessageEntity, onClick: (MessageEntity, String) -> Unit) {
             val ctx = binding.root.context
-            binding.textTitle.text = item.approvalTitle.ifBlank { "Hermes 请求你的确认" }
+            binding.textTitle.text = item.approvalTitle.ifBlank { ctx.getString(R.string.approval_hint) }
             if (item.approvalDetail.isNotBlank()) {
                 binding.textDetail.visibility = View.VISIBLE
                 binding.textDetail.text = item.approvalDetail
@@ -90,7 +124,7 @@ class MessageAdapter(
                     backgroundTintList = android.content.res.ColorStateList.valueOf(
                         if (resolved) gray else blue
                     )
-                    setTextColor(if (resolved) white else white)
+                    setTextColor(white)
                     setOnClickListener { onClick(item, option) }
                 }
                 val params = ViewGroup.MarginLayoutParams(

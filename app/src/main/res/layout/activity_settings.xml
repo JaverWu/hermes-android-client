@@ -11,7 +11,7 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/tg_blue"
+        android:background="@color/toolbar_bg"
         app:title="@string/title_settings"
         app:titleTextColor="@color/text_on_blue"
         app:navigationIcon="?attr/homeAsUpIndicator"
@@ -169,7 +169,64 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 卡片2：关于 -->
+            <!-- 卡片2：外观 -->
+            <TextView
+                style="@style/SectionLabel"
+                android:layout_marginTop="20dp"
+                android:text="@string/section_appearance" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:cardBackgroundColor="@color/surface"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="0dp"
+                app:contentPadding="16dp">
+
+                <RadioGroup
+                    android:id="@+id/radioGroupNightMode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <RadioButton
+                        android:id="@+id/radioSystem"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/night_mode_system"
+                        android:textSize="15sp"
+                        android:textColor="@color/text_primary"
+                        android:paddingStart="8dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp" />
+
+                    <RadioButton
+                        android:id="@+id/radioLight"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/night_mode_light"
+                        android:textSize="15sp"
+                        android:textColor="@color/text_primary"
+                        android:paddingStart="8dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp" />
+
+                    <RadioButton
+                        android:id="@+id/radioDark"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/night_mode_dark"
+                        android:textSize="15sp"
+                        android:textColor="@color/text_primary"
+                        android:paddingStart="8dp"
+                        android:paddingTop="8dp"
+                        android:paddingBottom="8dp" />
+                </RadioGroup>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 卡片3：关于 -->
             <TextView
                 style="@style/SectionLabel"
                 android:layout_marginTop="20dp"

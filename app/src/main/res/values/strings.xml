@@ -29,8 +29,8 @@
     <string name="profile_subtitle">AI 助手</string>
     <string name="section_connection">连接设置</string>
     <string name="section_about">关于</string>
-    <string name="about_version">Hermes 对话 v1.0</string>
-    <string name="about_desc">基于 Hermes 后端的本地聊天客户端，支持流式回复与工具调用审批。</string>
+    <string name="about_version">Hermes 对话 v1.0.1</string>
+    <string name="about_desc">基于 Hermes 后端的本地聊天客户端，支持流式回复、Markdown 渲染与工具调用审批。</string>
     <string name="settings_base_url">API 地址</string>
     <string name="settings_base_url_hint">这里填入 API 地址（形如 https://your-host/v1）</string>
     <string name="settings_api_key">API 密钥</string>
@@ -39,6 +39,13 @@
     <string name="settings_system_prompt_hint">设定 Hermes 的角色与行为</string>
     <string name="settings_save">保存</string>
     <string name="settings_saved">已保存</string>
+
+    <!-- 夜间模式 -->
+    <string name="section_appearance">外观</string>
+    <string name="settings_night_mode">夜间模式</string>
+    <string name="night_mode_system">跟随系统</string>
+    <string name="night_mode_light">日间模式</string>
+    <string name="night_mode_dark">夜间模式</string>
 
     <!-- 审批卡片 -->
     <string name="approval_hint">Hermes 请求你的确认</string>

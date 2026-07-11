@@ -12,8 +12,8 @@ android {
         applicationId = "com.hermes.chat"
         minSdk = 29          // Android 10.0 及以上
         targetSdk = 36       // 对齐 Android 16，消除兼容性限制
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
     }
 
     buildTypes {
@@ -61,4 +61,9 @@ dependencies {
     // 本地持久化：Room
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
+
+    // Markdown 渲染（Markwon）
+    implementation("io.noties.markwon:core:4.6.2")
+    implementation("io.noties.markwon:ext-strikethrough:4.6.2")
+    implementation("io.noties.markwon:ext-tables:4.6.2")
 }

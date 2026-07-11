@@ -31,8 +31,11 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _isStreaming = MutableStateFlow(false)
     val isStreaming: StateFlow<Boolean> = _isStreaming
 
+    /** 当前正在流式输出的助手消息 ID，供 Adapter 判断打字指示器 */
+    var streamingAssistantId: String? = null
+        private set
+
     private var conversationId: String? = null
-    private var streamingAssistantId: String? = null
     private val streamingBuffer = StringBuilder()
     private var approvalHandledThisTurn = false
     private var streamingTurnId = 0

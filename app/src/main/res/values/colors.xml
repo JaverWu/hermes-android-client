@@ -15,6 +15,14 @@
     <color name="chat_bg">#F0F2F5</color>
     <color name="surface">#FFFFFF</color>
 
+    <!-- 工具栏 / 状态栏（日间蓝底） -->
+    <color name="toolbar_bg">#3390EC</color>
+    <color name="status_bar">#2B7CD3</color>
+
+    <!-- 代码块背景 -->
+    <color name="code_block_bg">#F5F6F8</color>
+    <color name="code_block_text">#C7254E</color>
+
     <!-- 气泡（收进） -->
     <color name="bubble_in_bg">#FFFFFF</color>
     <color name="bubble_in_border">#E6E8EB</color>
@@ -32,6 +40,9 @@
 
     <!-- 分隔线 -->
     <color name="divider">#E6E8EB</color>
+
+    <!-- 系统消息背景 -->
+    <color name="system_bg">#ECEFF3</color>
 
     <!-- 审批卡片（精致暖橙） -->
     <color name="approval_bg">#FFF6E5</color>

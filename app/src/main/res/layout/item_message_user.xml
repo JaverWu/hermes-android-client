@@ -3,9 +3,9 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingStart="48dp"
-    android:paddingTop="4dp"
+    android:paddingTop="6dp"
     android:paddingEnd="8dp"
-    android:paddingBottom="4dp">
+    android:paddingBottom="6dp">
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -17,7 +17,7 @@
             android:id="@+id/textMessage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:maxWidth="300dp"
+            android:maxWidth="280dp"
             android:background="@drawable/bg_bubble_out"
             android:textColor="@color/bubble_out_text"
             android:paddingStart="14dp"
@@ -25,7 +25,7 @@
             android:paddingTop="10dp"
             android:paddingBottom="10dp"
             android:textSize="15sp"
-            android:lineSpacingExtra="2dp"
+            android:lineSpacingExtra="3dp"
             android:textIsSelectable="true" />
 
         <TextView
@@ -34,7 +34,8 @@
             android:layout_height="wrap_content"
             android:layout_gravity="end"
             android:layout_marginTop="3dp"
-            android:textSize="12sp"
-            android:textColor="#B3FFFFFF" />
+            android:layout_marginEnd="4dp"
+            android:textSize="11sp"
+            android:textColor="@color/text_secondary" />
     </LinearLayout>
 </FrameLayout>
