@@ -3,7 +3,7 @@
     android:layout_height="wrap_content"
     android:paddingStart="@dimen/space_xl"
     android:paddingTop="@dimen/space_xs"
-    android:paddingEnd="@dimen/space_lg"
+    android:paddingEnd="@dimen/space_xs"
     android:paddingBottom="@dimen/space_xs">
 
     <LinearLayout

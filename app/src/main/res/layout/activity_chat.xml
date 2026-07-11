@@ -34,9 +34,9 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clipToPadding="false"
-            android:paddingStart="@dimen/space_lg"
+            android:paddingStart="@dimen/space_xs"
             android:paddingTop="@dimen/space_lg"
-            android:paddingEnd="@dimen/space_lg"
+            android:paddingEnd="@dimen/space_xs"
             android:paddingBottom="@dimen/space_md" />
 
         <TextView

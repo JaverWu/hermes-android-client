@@ -35,7 +35,7 @@
     <string name="section_appearance">外观</string>
     <string name="section_avatar">头像</string>
     <string name="section_about">关于</string>
-    <string name="about_version">Hermes 对话 v1.2.0</string>
+    <string name="about_version">Hermes 对话 v1.0.1</string>
     <string name="about_desc">基于 Hermes 后端的本地聊天客户端，支持流式回复、Markdown 渲染、实时思考状态与工具调用审批。</string>
     <string name="settings_base_url">API 地址</string>
     <string name="settings_base_url_hint">这里填入 API 地址（形如 https://your-host/v1）</string>
