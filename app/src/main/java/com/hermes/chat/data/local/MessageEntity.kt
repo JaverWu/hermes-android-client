@@ -1,5 +1,6 @@
 package com.hermes.chat.data.local
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -26,8 +27,10 @@ data class MessageEntity(
     /** [STATUS_PENDING] 或 [STATUS_RESOLVED]，仅审批消息有意义 */
     val approvalStatus: String = STATUS_PENDING,
     /** 推理（思考）过程全文：流式结束后持久化，供折叠/展开展示 */
+    @ColumnInfo(defaultValue = "")
     val reasoning: String = "",
     /** 工具调用进度卡片 JSON（见 [ToolCall]），持久化供展示 */
+    @ColumnInfo(defaultValue = "")
     val toolCallsJson: String = ""
 ) {
     fun options(): List<String> =
