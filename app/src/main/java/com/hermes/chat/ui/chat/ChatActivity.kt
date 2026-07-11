@@ -31,6 +31,7 @@ import com.hermes.chat.databinding.ItemToolChipBinding
 import com.hermes.chat.databinding.ItemSlashCommandBinding
 import com.hermes.chat.ui.common.AvatarPresets
 import com.hermes.chat.ui.common.AvatarRole
+import com.hermes.chat.ui.common.copyAvatarToInternal
 import com.hermes.chat.ui.common.showAvatarPicker
 import com.hermes.chat.ui.common.showAvatarRoleChooser
 import com.hermes.chat.ui.settings.SettingsActivity
@@ -53,6 +54,21 @@ class ChatActivity : AppCompatActivity() {
                 val name = selectedUri.path?.substringAfterLast('/')
                     ?: selectedUri.toString()
                 Toast.makeText(this, "已选择文件: $name", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+    /** 头像选择器（上传自定义头像）。 */
+    private val avatarPickerLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) {
+                val path = copyAvatarToInternal(this, uri)
+                if (path != null) {
+                    settings.userAvatarUri = path
+                    adapter.notifyItemRangeChanged(0, adapter.itemCount)
+                    Toast.makeText(this, R.string.avatar_upload_success, Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, R.string.avatar_upload_failed, Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -316,11 +332,24 @@ class ChatActivity : AppCompatActivity() {
     /** 在对话界面中修改用户 / Hermes 头像 */
     private fun openAvatarEditor() {
         showAvatarRoleChooser(this) { role ->
-            val presets = if (role == AvatarRole.USER) AvatarPresets.USER else AvatarPresets.AI
-            val current = if (role == AvatarRole.USER) settings.userAvatarIndex else settings.aiAvatarIndex
-            showAvatarPicker(this, presets, current) { idx ->
-                if (role == AvatarRole.USER) settings.userAvatarIndex = idx else settings.aiAvatarIndex = idx
-                adapter.notifyItemRangeChanged(0, adapter.itemCount)
+            when (role) {
+                AvatarRole.USER -> {
+                    showAvatarPicker(
+                        this,
+                        AvatarPresets.USER,
+                        settings.userAvatarIndex,
+                        onPick = { idx ->
+                            settings.userAvatarIndex = idx
+                            settings.userAvatarUri = ""  // 切回预设时清空自定义头像
+                            adapter.notifyItemRangeChanged(0, adapter.itemCount)
+                        },
+                        onUpload = { avatarPickerLauncher.launch("image/*") }
+                    )
+                }
+                AvatarRole.AI -> {
+                    // Hermes 头像已固定为 logo
+                    Toast.makeText(this, R.string.avatar_ai_fixed, Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }

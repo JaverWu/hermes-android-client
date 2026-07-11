@@ -48,26 +48,11 @@
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
-                    <FrameLayout
+                    <com.hermes.chat.ui.common.AvatarView
+                        android:id="@+id/avatarProfile"
                         android:layout_width="56dp"
-                        android:layout_height="56dp">
-
-                        <ImageView
-                            android:layout_width="56dp"
-                            android:layout_height="56dp"
-                            android:background="@drawable/bg_circle_blue"
-                            android:backgroundTint="@color/tg_blue"
-                            android:scaleType="centerInside" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:gravity="center"
-                            android:text="H"
-                            android:textColor="@color/white"
-                            android:textSize="24sp"
-                            android:textStyle="bold" />
-                    </FrameLayout>
+                        android:layout_height="56dp"
+                        app:avatarTextSize="24sp" />
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -125,26 +110,11 @@
                     android:clickable="true"
                     android:focusable="true">
 
-                    <FrameLayout
+                    <com.hermes.chat.ui.common.AvatarView
+                        android:id="@+id/avatarUser"
                         android:layout_width="44dp"
-                        android:layout_height="44dp">
-
-                        <ImageView
-                            android:id="@+id/imageUserAvatar"
-                            android:layout_width="44dp"
-                            android:layout_height="44dp"
-                            android:background="@drawable/bg_circle_blue"
-                            android:scaleType="centerInside" />
-
-                        <TextView
-                            android:id="@+id/textUserAvatarLetter"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:gravity="center"
-                            android:textColor="@color/white"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-                    </FrameLayout>
+                        android:layout_height="44dp"
+                        app:avatarTextSize="18sp" />
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -197,26 +167,11 @@
                     android:clickable="true"
                     android:focusable="true">
 
-                    <FrameLayout
+                    <com.hermes.chat.ui.common.AvatarView
+                        android:id="@+id/avatarAi"
                         android:layout_width="44dp"
-                        android:layout_height="44dp">
-
-                        <ImageView
-                            android:id="@+id/imageAiAvatar"
-                            android:layout_width="44dp"
-                            android:layout_height="44dp"
-                            android:background="@drawable/bg_circle_blue"
-                            android:scaleType="centerInside" />
-
-                        <TextView
-                            android:id="@+id/textAiAvatarLetter"
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:gravity="center"
-                            android:textColor="@color/white"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-                    </FrameLayout>
+                        android:layout_height="44dp"
+                        app:avatarTextSize="18sp" />
 
                     <LinearLayout
                         android:layout_width="0dp"

@@ -1,0 +1,67 @@
+sequenceDiagram
+    %% 场景1：用户在设置页上传自定义头像
+    participant U as User
+    participant SA as SettingsActivity
+    participant FPL as FilePickerLauncher
+    participant SR as SettingsRepository
+    participant AV as AvatarView
+    participant FS as FileSystem(filesDir)
+
+    U->>SA: 点击「我的头像」区域
+    SA->>SA: 弹出选择对话框（预设 + 从相册上传按钮）
+    U->>SA: 选择「从相册上传」
+    SA->>FPL: launch("image/*")
+    FPL->>U: 系统相册
+    U->>FPL: 选取图片 (contentUri)
+    FPL-->>SA: 回调 uri
+
+    SA->>SA: contentResolver.openInputStream(uri)
+    SA->>FS: 复制到 filesDir/avatars/user_avatar.jpg
+    FS-->>SA: 返回绝对路径 path
+    SA->>SR: userAvatarUri = path
+    SR-->>SA: 持久化完成
+
+    SA->>AV: bindImage(path)
+    AV->>AV: loadSampledBitmap(path, avatarSize)
+    alt Bitmap 解码成功
+        AV->>AV: imageAvatar.setImageBitmap(bitmap)
+        AV->>AV: textAvatarLetter.visibility = GONE
+    else 解码失败
+        AV->>AV: 回退 bindText(preset.glyph, preset.colorRes)
+    end
+    AV-->>U: 显示圆形头像
+
+    %% 场景2：聊天页渲染用户头像
+    Note over U,FS: ── 聊天页渲染用户头像 ──
+
+    participant MA as MessageAdapter
+    participant SR2 as SettingsRepository
+    participant AV2 as AvatarView
+    participant AP as AvatarPresets
+
+    MA->>SR2: 读取 userAvatarUri
+    SR2-->>MA: 返回 path (可能为空)
+
+    alt path 非空且文件存在
+        MA->>AV2: bindImage(path)
+        AV2->>AV2: loadSampledBitmap → setImageBitmap
+        AV2->>AV2: textAvatarLetter GONE
+    else path 为空或文件不存在
+        MA->>SR2: 读取 userAvatarIndex
+        MA->>AP: user(index) → Preset(colorRes, glyph)
+        MA->>AV2: bindText(glyph, colorRes)
+        AV2->>AV2: textAvatarLetter.text = glyph
+        AV2->>AV2: imageAvatar backgroundTint = color
+    end
+
+    %% 场景3：助手头像固定 logo
+    Note over U,FS: ── 助手头像固定 logo ──
+
+    participant MA3 as MessageAdapter
+    participant AV3 as AvatarView
+
+    MA3->>AV3: bindLogo(R.drawable.logo)
+    AV3->>AV3: imageAvatar.setImageResource(R.drawable.logo)
+    AV3->>AV3: imageAvatar.backgroundTint = transparent
+    AV3->>AV3: textAvatarLetter.visibility = GONE
+    Note over AV3: 不再读取 aiAvatarIndex

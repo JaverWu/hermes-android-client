@@ -57,6 +57,10 @@
     <string name="avatar_ai">Hermes 头像</string>
     <string name="avatar_change">点击更换</string>
     <string name="avatar_picker_title">选择头像</string>
+    <string name="avatar_upload">从相册上传</string>
+    <string name="avatar_upload_success">头像已更新</string>
+    <string name="avatar_upload_failed">图片加载失败，已使用默认头像</string>
+    <string name="avatar_ai_fixed">Hermes 头像已固定</string>
 
     <!-- 审批卡片 -->
     <string name="approval_hint">Hermes 请求你的确认</string>

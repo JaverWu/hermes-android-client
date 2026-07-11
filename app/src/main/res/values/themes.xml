@@ -81,6 +81,13 @@
         <item name="android:paddingStart">4dp</item>
     </style>
 
+    <!-- ===== 头像圆形裁剪样式 ===== -->
+    <!-- ShapeableImageView 的 shapeAppearanceOverlay：所有角 50% 圆角 = 正圆 -->
+    <style name="ShapeAppearance.Hermes.Circle" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
+
     <!-- 圆角卡片（列表项 / 输入区 / 设置卡片） -->
     <style name="HermesCard" parent="Widget.MaterialComponents.CardView">
         <item name="cardBackgroundColor">@color/surface</item>

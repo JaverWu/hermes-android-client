@@ -2,7 +2,6 @@ package com.hermes.chat.ui.conversations
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -10,6 +9,7 @@ import com.hermes.chat.R
 import com.hermes.chat.data.local.ConversationEntity
 import com.hermes.chat.data.local.MessageDao
 import com.hermes.chat.databinding.ItemConversationBinding
+import com.hermes.chat.ui.common.AvatarView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -42,17 +42,14 @@ class ConversationAdapter(
         val itemId = item.id
         val pos = position
         val title = item.title.ifBlank { "新对话" }
-        val ctx = holder.binding.root.context
 
         holder.binding.textTitle.text = title
         holder.binding.textTime.text = formatTime(item.updatedAt)
 
-        // 头像：首字母 + 按名称 hash 选色
+        // 头像：首字母 + 按名称 hash 选色（仅 TEXT 模式，不接自定义图片）
         val colorRes = avatarColors[Math.abs(title.hashCode()) % avatarColors.size]
-        holder.binding.imageAvatar.backgroundTintList =
-            android.content.res.ColorStateList.valueOf(ContextCompat.getColor(ctx, colorRes))
-        holder.binding.textAvatarLetter.text =
-            title.firstOrNull()?.uppercaseChar()?.toString() ?: "H"
+        val letter = title.firstOrNull()?.uppercaseChar()?.toString() ?: "H"
+        holder.binding.avatarView.bindText(letter, colorRes)
 
         // 预览：先清空避免复用残留，再异步读取最后一条消息（带复用防护）
         holder.binding.textPreview.text = ""

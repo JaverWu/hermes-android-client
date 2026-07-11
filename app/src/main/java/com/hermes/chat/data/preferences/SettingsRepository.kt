@@ -37,10 +37,17 @@ class SettingsRepository(context: Context) {
         get() = prefs.getInt(KEY_USER_AVATAR, 0)
         set(v) = prefs.edit().putInt(KEY_USER_AVATAR, v).apply()
 
-    /** Hermes 头像预设索引（见 [com.hermes.chat.ui.common.AvatarPresets.AI]） */
+    /** Hermes 头像预设索引（见 [com.hermes.chat.ui.common.AvatarPresets.AI]）。
+     *  注意：助手气泡头像已固定使用 R.drawable.logo，此字段仅保留兼容。 */
     var aiAvatarIndex: Int
         get() = prefs.getInt(KEY_AI_AVATAR, 0)
         set(v) = prefs.edit().putInt(KEY_AI_AVATAR, v).apply()
+
+    /** 用户自定义头像绝对路径（空字符串表示未设置，使用预设）。
+     *  路径指向 filesDir/avatars/user_avatar.jpg，非 Content URI。 */
+    var userAvatarUri: String
+        get() = prefs.getString(KEY_USER_AVATAR_URI, "") ?: ""
+        set(v) = prefs.edit().putString(KEY_USER_AVATAR_URI, v).apply()
 
     /** 长运行模式（/v1/runs）开关：Service 读取以决定走普通流式还是 runs 订阅。 */
     var runMode: Boolean
@@ -76,6 +83,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_NIGHT_MODE = "night_mode"
         private const val KEY_USER_AVATAR = "user_avatar_index"
         private const val KEY_AI_AVATAR = "ai_avatar_index"
+        private const val KEY_USER_AVATAR_URI = "user_avatar_uri"
         private const val KEY_RUN_MODE = "run_mode"
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
         private const val KEY_DRAFT = "draft_"

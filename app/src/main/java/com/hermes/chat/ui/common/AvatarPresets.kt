@@ -19,6 +19,7 @@ object AvatarPresets {
         Preset(R.color.avatar_6, "🍎"),
     )
 
+    // 助手气泡头像已固定使用 R.drawable.logo，此数组仅保留兼容（设置页不再提供 AI 预设选择）。
     val AI: List<Preset> = listOf(
         Preset(R.color.avatar_1, "H"),
         Preset(R.color.avatar_5, "🤖"),

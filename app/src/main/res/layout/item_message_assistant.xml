@@ -9,29 +9,14 @@
     android:paddingEnd="@dimen/space_xl"
     android:paddingBottom="@dimen/space_xs">
 
-    <!-- 助手头像（颜色/字形由 Adapter 按设置注入） -->
-    <FrameLayout
+    <!-- 助手头像（固定 R.drawable.logo，由 Adapter bindLogo 注入） -->
+    <com.hermes.chat.ui.common.AvatarView
+        android:id="@+id/avatarView"
         android:layout_width="@dimen/avatar_chat_size"
         android:layout_height="@dimen/avatar_chat_size"
         android:layout_gravity="bottom"
-        android:layout_marginEnd="@dimen/space_sm">
-
-        <ImageView
-            android:id="@+id/imageAvatar"
-            android:layout_width="@dimen/avatar_chat_size"
-            android:layout_height="@dimen/avatar_chat_size"
-            android:background="@drawable/bg_circle_blue"
-            android:scaleType="centerInside" />
-
-        <TextView
-            android:id="@+id/textAvatarLetter"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:textColor="@color/white"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-    </FrameLayout>
+        android:layout_marginEnd="@dimen/space_sm"
+        app:avatarTextSize="14sp" />
 
     <!-- 气泡区域 -->
     <LinearLayout

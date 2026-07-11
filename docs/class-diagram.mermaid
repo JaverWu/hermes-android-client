@@ -1,0 +1,87 @@
+classDiagram
+    class AvatarView {
+        -ShapeableImageView imageAvatar
+        -TextView textAvatarLetter
+        -Mode currentMode
+        +init(context: Context, attrs: AttributeSet?)
+        +bindText(glyph: String, colorRes: Int) void
+        +bindImage(absolutePath: String) void
+        +bindLogo(drawableRes: Int) void
+        -loadSampledBitmap(path: String, reqWidth: Int) Bitmap?
+    }
+
+    class SettingsRepository {
+        -SharedPreferences prefs
+        +var baseUrl: String
+        +var apiKey: String
+        +var model: String
+        +var systemPrompt: String
+        +var nightMode: String
+        +var userAvatarIndex: Int
+        +var aiAvatarIndex: Int
+        +var userAvatarUri: String
+        +var runMode: Boolean
+        +var keepScreenOn: Boolean
+        +fun getDraft(conversationId: String): String
+        +fun setDraft(conversationId: String, text: String): void
+        +fun clearDraft(conversationId: String): void
+        +fun isConfigured(): Boolean
+    }
+
+    class AvatarPresets {
+        <<object>>
+        +val USER: List~Preset~
+        +val AI: List~Preset~
+        +fun user(index: Int): Preset
+        +fun ai(index: Int): Preset
+    }
+
+    class Preset {
+        +val colorRes: Int
+        +val glyph: String
+    }
+
+    class MessageAdapter {
+        -SettingsRepository settings
+        -Markwon markwon
+        -var liveContent: String
+        +onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int): void
+        -bindUserAvatar(holder: UserVH): void
+        -bindAssistantAvatar(holder: AssistantVH): void
+    }
+
+    class ConversationAdapter {
+        -int[] avatarColors
+        +onBindViewHolder(holder: VH, position: Int): void
+    }
+
+    class SettingsActivity {
+        -SettingsRepository settings
+        -ActivityResultLauncher~Uri~ avatarPickerLauncher
+        +refreshAvatars(): void
+        -copyAvatarToInternal(uri: Uri): String?
+        -setupAvatarUpload(): void
+    }
+
+    class ChatActivity {
+        -SettingsRepository settings
+        -openAvatarEditor(): void
+    }
+
+    class AvatarPicker {
+        <<utility>>
+        +showAvatarPicker(context, presets, currentIndex, onPick, onUpload?)
+        +showAvatarRoleChooser(context, onChoose)
+    }
+
+    AvatarView --> AvatarPresets : uses Preset for fallback
+    SettingsRepository --> AvatarPresets : stores index
+    MessageAdapter --> AvatarView : calls bind methods
+    MessageAdapter --> SettingsRepository : reads userAvatarUri / userAvatarIndex
+    ConversationAdapter --> AvatarView : calls bindText
+    SettingsActivity --> AvatarView : calls bind methods
+    SettingsActivity --> SettingsRepository : reads/writes userAvatarUri
+    SettingsActivity --> AvatarPicker : shows picker dialog
+    ChatActivity --> SettingsRepository : reads/writes avatar settings
+    ChatActivity --> AvatarPicker : shows role chooser + picker
+    AvatarPresets *-- Preset : nested data class

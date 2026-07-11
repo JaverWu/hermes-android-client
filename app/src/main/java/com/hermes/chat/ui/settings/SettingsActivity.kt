@@ -7,6 +7,7 @@ import android.os.PowerManager
 import android.provider.Settings as SystemSettings
 import android.widget.RadioGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.widget.SwitchCompat
@@ -15,12 +16,29 @@ import com.hermes.chat.R
 import com.hermes.chat.data.preferences.SettingsRepository
 import com.hermes.chat.databinding.ActivitySettingsBinding
 import com.hermes.chat.ui.common.AvatarPresets
+import com.hermes.chat.ui.common.copyAvatarToInternal
 import com.hermes.chat.ui.common.showAvatarPicker
+import java.io.File
 
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivitySettingsBinding
     private lateinit var settings: SettingsRepository
+
+    /** 从相册选取图片并复制到私有目录，存为自定义头像 */
+    private val avatarPickerLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) {
+                val path = copyAvatarToInternal(this, uri)
+                if (path != null) {
+                    settings.userAvatarUri = path
+                    refreshAvatars()
+                    Toast.makeText(this, R.string.avatar_upload_success, Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, R.string.avatar_upload_failed, Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,15 +75,18 @@ class SettingsActivity : AppCompatActivity() {
             showAvatarPicker(
                 this,
                 AvatarPresets.USER,
-                settings.userAvatarIndex
-            ) { settings.userAvatarIndex = it; refreshAvatars() }
+                settings.userAvatarIndex,
+                onPick = { idx ->
+                    settings.userAvatarIndex = idx
+                    settings.userAvatarUri = ""  // 切回预设时清空自定义头像
+                    refreshAvatars()
+                },
+                onUpload = { avatarPickerLauncher.launch("image/*") }
+            )
         }
         binding.layoutAiAvatar.setOnClickListener {
-            showAvatarPicker(
-                this,
-                AvatarPresets.AI,
-                settings.aiAvatarIndex
-            ) { settings.aiAvatarIndex = it; refreshAvatars() }
+            // Hermes 头像已固定为 logo，点击仅提示
+            Toast.makeText(this, R.string.avatar_ai_fixed, Toast.LENGTH_SHORT).show()
         }
         refreshAvatars()
 
@@ -102,19 +123,27 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    /** 根据当前设置刷新两个头像预览 */
+    /** 根据当前设置刷新头像预览：用户头像跟随自定义/预设，Hermes 固定 logo */
     private fun refreshAvatars() {
-        val user = AvatarPresets.user(settings.userAvatarIndex)
-        binding.imageUserAvatar.backgroundTintList = android.content.res.ColorStateList.valueOf(
-            ContextCompat.getColor(this, user.colorRes)
-        )
-        binding.textUserAvatarLetter.text = user.glyph
+        // 用户头像（资料区 + 我的头像行）：有自定义图片则图片，否则预设
+        val userUri = settings.userAvatarUri
+        val userLoaded = userUri.isNotBlank() && File(userUri).exists()
+        if (userLoaded) {
+            val okUser = binding.avatarUser.bindImage(userUri)
+            val okProfile = binding.avatarProfile.bindImage(userUri)
+            if (!okUser || !okProfile) {
+                val user = AvatarPresets.user(settings.userAvatarIndex)
+                binding.avatarUser.bindText(user.glyph, user.colorRes)
+                binding.avatarProfile.bindText(user.glyph, user.colorRes)
+            }
+        } else {
+            val user = AvatarPresets.user(settings.userAvatarIndex)
+            binding.avatarUser.bindText(user.glyph, user.colorRes)
+            binding.avatarProfile.bindText(user.glyph, user.colorRes)
+        }
 
-        val ai = AvatarPresets.ai(settings.aiAvatarIndex)
-        binding.imageAiAvatar.backgroundTintList = android.content.res.ColorStateList.valueOf(
-            ContextCompat.getColor(this, ai.colorRes)
-        )
-        binding.textAiAvatarLetter.text = ai.glyph
+        // Hermes 头像：固定 logo
+        binding.avatarAi.bindLogo(R.drawable.logo)
     }
 
     private fun applyNightMode(mode: String) {

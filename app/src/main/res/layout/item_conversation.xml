@@ -18,29 +18,18 @@
         android:paddingEnd="@dimen/space_md"
         android:paddingBottom="@dimen/space_md">
 
-        <!-- 圆形头像（颜色按会话名 hash，首字母由 Adapter 设置） -->
+        <!-- 圆形头像（颜色按会话名 hash，首字母由 Adapter 设置；未读红点为 sibling） -->
         <FrameLayout
             android:layout_width="@dimen/avatar_list_size"
             android:layout_height="@dimen/avatar_list_size">
 
-            <ImageView
-                android:id="@+id/imageAvatar"
+            <com.hermes.chat.ui.common.AvatarView
+                android:id="@+id/avatarView"
                 android:layout_width="@dimen/avatar_list_size"
                 android:layout_height="@dimen/avatar_list_size"
-                android:background="@drawable/avatar_circle"
-                android:scaleType="centerInside" />
+                app:avatarTextSize="18sp" />
 
-            <TextView
-                android:id="@+id/textAvatarLetter"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:textColor="@color/white"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                tools:text="H" />
-
-            <!-- 未读红点（默认隐藏） -->
+            <!-- 未读红点（默认隐藏，作为 AvatarView 的 sibling 不受圆形裁剪影响） -->
             <TextView
                 android:id="@+id/textUnread"
                 android:layout_width="18dp"
