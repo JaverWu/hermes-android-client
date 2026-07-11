@@ -42,6 +42,11 @@ class SettingsRepository(context: Context) {
         get() = prefs.getInt(KEY_AI_AVATAR, 0)
         set(v) = prefs.edit().putInt(KEY_AI_AVATAR, v).apply()
 
+    /** 长运行模式（/v1/runs）开关：Service 读取以决定走普通流式还是 runs 订阅。 */
+    var runMode: Boolean
+        get() = prefs.getBoolean(KEY_RUN_MODE, false)
+        set(v) = prefs.edit().putBoolean(KEY_RUN_MODE, v).apply()
+
     // ===== 草稿：按会话 id 缓存未发送的输入，退出再进不丢失 =====
     fun getDraft(conversationId: String): String =
         prefs.getString(KEY_DRAFT + conversationId, "") ?: ""
@@ -66,6 +71,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_NIGHT_MODE = "night_mode"
         private const val KEY_USER_AVATAR = "user_avatar_index"
         private const val KEY_AI_AVATAR = "ai_avatar_index"
+        private const val KEY_RUN_MODE = "run_mode"
         private const val KEY_DRAFT = "draft_"
 
         const val MODE_SYSTEM = "system"

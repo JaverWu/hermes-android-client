@@ -36,6 +36,8 @@ class MessageAdapter(
     private var streamingAssistantId: String? = null
     private var thinkingContent: String = ""
     private var statusText: String = ""
+    /** 流式期间助手消息的实时正文（来自 ActiveRunState，比数据库落库更及时） */
+    var liveContent: String = ""
 
     /** 折叠状态（按消息 id 记忆，避免重绑时跳变） */
     private val reasoningExpanded = mutableSetOf<String>()
@@ -96,28 +98,36 @@ class MessageAdapter(
                 holder.binding.textAvatarLetter.text = ai.glyph
 
                 val isStreamingThis = item.id == streamingAssistantId
-                val hasContent = item.content.isNotBlank()
+                val live = if (isStreamingThis) liveContent else item.content
+                val hasLive = live.isNotBlank()
 
                 // 推理折叠卡片（持久化后的 reasoning_content）
                 bindReasoning(holder, item)
 
-                if (isStreamingThis && !hasContent) {
-                    if (thinkingContent.isNotBlank()) {
+                if (isStreamingThis) {
+                    if (hasLive) {
+                        // 流式期间用纯文本，避免每个 delta 都重渲染 Markdown
+                        holder.binding.layoutThinking.visibility = View.GONE
+                        holder.binding.layoutTyping.visibility = View.GONE
+                        holder.binding.textMessage.visibility = View.VISIBLE
+                        holder.binding.textMessage.text = live
+                    } else if (thinkingContent.isNotBlank()) {
                         holder.binding.layoutThinking.visibility = View.VISIBLE
                         holder.binding.textThinking.text = thinkingContent
                         holder.binding.layoutTyping.visibility = View.GONE
+                        holder.binding.textMessage.visibility = View.GONE
                     } else {
                         holder.binding.layoutThinking.visibility = View.GONE
                         holder.binding.layoutTyping.visibility = View.VISIBLE
+                        holder.binding.textMessage.visibility = View.GONE
                     }
-                    holder.binding.textMessage.visibility = View.GONE
                 } else {
                     holder.binding.layoutThinking.visibility = View.GONE
                     holder.binding.layoutTyping.visibility = View.GONE
                     holder.binding.textMessage.visibility = View.VISIBLE
                     getMarkwon(ctx).setMarkdown(
                         holder.binding.textMessage,
-                        if (hasContent) item.content else "…"
+                        if (item.content.isNotBlank()) item.content else "…"
                     )
                 }
 

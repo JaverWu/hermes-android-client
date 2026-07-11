@@ -1,7 +1,10 @@
 package com.hermes.chat.ui.chat
 
+import android.Manifest
 import android.app.AlertDialog
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -11,6 +14,7 @@ import android.view.inputmethod.EditorInfo
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -38,6 +42,17 @@ class ChatActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityChatBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Android 13+ 需要运行时授权才能弹本地通知（"回复了你"提示依赖它）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(
+                    this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1
+                )
+            }
+        }
 
         viewModel.init(intent.getStringExtra(EXTRA_CONVERSATION_ID))
 
@@ -83,11 +98,14 @@ class ChatActivity : AppCompatActivity() {
         binding.editInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEND) { send(); true } else false
         }
+        // 左侧按钮：打开斜杠命令面板（官方聊天命令 /new /status 等）
+        binding.imageAttach.setOnClickListener { openSlashPanel() }
 
         lifecycleScope.launch {
             viewModel.messages.collect { list ->
-                adapter.setStreamingAssistantId(viewModel.streamingAssistantId)
+                adapter.setStreamingAssistantId(viewModel.streamingAssistantId.value)
                 adapter.setStreamingState(viewModel.thinkingContent.value, viewModel.statusText.value)
+                adapter.liveContent = viewModel.liveContent.value
                 adapter.submitList(list) {
                     if (list.isNotEmpty()) {
                         binding.recyclerMessages.scrollToPosition(list.lastIndex)
@@ -100,18 +118,34 @@ class ChatActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.isStreaming.collect { streaming ->
                 binding.buttonSend.isEnabled = !streaming
-                adapter.setStreamingState(viewModel.thinkingContent.value, viewModel.statusText.value)
             }
         }
         lifecycleScope.launch {
             viewModel.thinkingContent.collect {
                 adapter.setStreamingState(it, viewModel.statusText.value)
+                adapter.setStreamingAssistantId(viewModel.streamingAssistantId.value)
+                adapter.liveContent = viewModel.liveContent.value
                 adapter.notifyItemRangeChanged(0, adapter.itemCount)
             }
         }
         lifecycleScope.launch {
             viewModel.statusText.collect {
                 adapter.setStreamingState(viewModel.thinkingContent.value, it)
+                adapter.setStreamingAssistantId(viewModel.streamingAssistantId.value)
+                adapter.liveContent = viewModel.liveContent.value
+                adapter.notifyItemRangeChanged(0, adapter.itemCount)
+            }
+        }
+        lifecycleScope.launch {
+            viewModel.liveContent.collect { c ->
+                adapter.liveContent = c
+                adapter.setStreamingAssistantId(viewModel.streamingAssistantId.value)
+                adapter.notifyItemRangeChanged(0, adapter.itemCount)
+            }
+        }
+        lifecycleScope.launch {
+            viewModel.streamingAssistantId.collect { id ->
+                adapter.setStreamingAssistantId(id)
                 adapter.notifyItemRangeChanged(0, adapter.itemCount)
             }
         }
@@ -198,6 +232,21 @@ class ChatActivity : AppCompatActivity() {
         }
         binding.editInput.text?.clear()
         viewModel.sendUserMessage(text)
+    }
+
+    private fun openSlashPanel() {
+        SlashCommandPanel(this) { cmd -> insertCommand(cmd) }.show()
+    }
+
+    /** 把选中的斜杠命令插入输入框光标处 */
+    private fun insertCommand(cmd: String) {
+        val et = binding.editInput
+        val editable = et.text ?: return
+        val start = et.selectionStart.coerceAtLeast(0)
+        val end = et.selectionEnd.coerceAtLeast(0)
+        editable.replace(start, end, cmd)
+        et.setSelection(start + cmd.length)
+        et.requestFocus()
     }
 
     private fun startNewChat() {

@@ -82,4 +82,12 @@
     <string name="action_delete_message">删除消息</string>
     <string name="confirm_delete_message_title">删除消息</string>
     <string name="confirm_delete_message_msg">确定删除这条消息？此操作不可恢复。</string>
+
+    <!-- 斜杠命令面板 -->
+    <string name="slash_panel_title">斜杠命令</string>
+    <string name="slash_panel_hint">搜索命令，如 new / status</string>
+
+    <!-- 后台运行通知 -->
+    <string name="notification_channel_name">Hermes 运行通知</string>
+    <string name="notification_channel_desc">对话回复完成等后台运行通知</string>
 </resources>

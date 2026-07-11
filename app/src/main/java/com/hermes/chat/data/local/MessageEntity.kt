@@ -31,7 +31,10 @@ data class MessageEntity(
     val reasoning: String = "",
     /** 工具调用进度卡片 JSON（见 [ToolCall]），持久化供展示 */
     @ColumnInfo(defaultValue = "")
-    val toolCallsJson: String = ""
+    val toolCallsJson: String = "",
+    /** 是否仍在流式输出中（由前台 Service 持有）。用于页面切换/重进时区分"进行中"与"空气泡"。 */
+    @ColumnInfo(defaultValue = "0")
+    val isStreaming: Boolean = false
 ) {
     fun options(): List<String> =
         if (optionsJson.isBlank()) emptyList()
