@@ -1,7 +1,11 @@
 package com.hermes.chat.ui.chat
 
 import android.app.Application
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.ServiceConnection
+import android.os.IBinder
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
@@ -101,7 +105,19 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     fun sendUserMessage(text: String) {
         val content = text.trim()
-        if (content.isEmpty() || ActiveRunState.isStreaming.value) return
+        if (content.isEmpty()) return
+        if (ActiveRunState.isStreaming.value) {
+            // 上一次 Service 被 cancel 时可能没调 reset()，isStreaming 卡在 true
+            // 检查是否真的有 Service 在跑：如果没有，强制 reset 并继续
+            val serviceRunning = isRunWatcherServiceRunning()
+            Log.w("ChatVM", "sendUserMessage blocked: isStreaming=true, serviceRunning=$serviceRunning")
+            if (!serviceRunning) {
+                Log.w("ChatVM", "Stale isStreaming detected, force resetting ActiveRunState")
+                ActiveRunState.reset()
+            } else {
+                return
+            }
+        }
         clearDraft()
         viewModelScope.launch(Dispatchers.IO) {
             ensureConversation(content)
@@ -188,5 +204,13 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 updatedAt = now()
             )
         )
+    }
+
+    /** 检查 RunWatcherService 是否正在运行（用于检测 isStreaming 假死状态） */
+    private fun isRunWatcherServiceRunning(): Boolean {
+        val mgr = getApplication<Application>().getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        @Suppress("DEPRECATION")
+        return mgr.getRunningServices(Int.MAX_VALUE)
+            .any { it.service.className == RunWatcherService::class.java.name }
     }
 }

@@ -107,6 +107,9 @@ class RunWatcherService : Service() {
 
     override fun onDestroy() {
         try { if (wakeLock.isHeld) wakeLock.release() } catch (_: Exception) {}
+        // 防止 ActiveRunState.isStreaming 卡在 true：scope.cancel 可能中断
+        // finalizeTurn/handleError 的协程，导致 reset() 没被调到，后续发消息全部被静默忽略
+        ActiveRunState.reset()
         scope.cancel()
         super.onDestroy()
     }
