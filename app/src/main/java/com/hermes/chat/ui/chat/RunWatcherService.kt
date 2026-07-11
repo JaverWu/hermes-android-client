@@ -9,6 +9,7 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.hermes.chat.HermesApplication
 import com.hermes.chat.R
@@ -72,13 +73,17 @@ class RunWatcherService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        conversationId = intent?.getStringExtra(EXTRA_CONVERSATION_ID)
-        assistantId = intent?.getStringExtra(EXTRA_ASSISTANT_ID)
-        if (conversationId == null || assistantId == null) {
+        val cid = intent?.getStringExtra(EXTRA_CONVERSATION_ID)
+        val aid = intent?.getStringExtra(EXTRA_ASSISTANT_ID)
+        Log.d("RunWatcher", "onStartCommand cid=$cid aid=$aid")
+        if (cid == null || aid == null) {
+            Log.w("RunWatcher", "Missing extras, stopping self")
             stopSelf()
             return START_NOT_STICKY
         }
-        ActiveRunState.begin(assistantId!!)
+        conversationId = cid
+        assistantId = aid
+        ActiveRunState.begin(aid)
         startForeground(NOTIF_ID, buildNotification("Hermes 正在处理…", ongoing = true))
         scope.launch { runTurn() }
         return START_NOT_STICKY
@@ -100,7 +105,9 @@ class RunWatcherService : Service() {
         val base = settings.baseUrl
         val key = settings.apiKey
         val model = settings.model
+        Log.d("RunWatcher", "runTurn start base=${base.take(40)} model=$model configured=${settings.isConfigured()}")
         if (!settings.isConfigured()) {
+            Log.w("RunWatcher", "Not configured, aborting")
             postSystemMessage("请先在「设置」中填写 API 地址和 Key。")
             finishService()
             return
@@ -129,6 +136,7 @@ class RunWatcherService : Service() {
 
         while (attempt <= MAX_RETRIES) {
             attempt++
+            Log.d("RunWatcher", "=== attempt $attempt / $MAX_RETRIES ===")
             resetBuffers() // 清空缓冲与实时态，从干净状态重新拉流
 
             // 用 CompletableDeferred 等待本轮真正结束（run 模式子协程也覆盖）
@@ -139,15 +147,18 @@ class RunWatcherService : Service() {
             var caught: Throwable? = null
 
             val onDone: () -> Unit = {
+                Log.d("RunWatcher", "onDone called (attempt $attempt)")
                 succeeded = true
                 if (!done.isCompleted) done.complete(Unit)
             }
             val onError: (Throwable) -> Unit = { e ->
+                Log.d("RunWatcher", "onError called (attempt $attempt): ${e.javaClass.simpleName}: ${e.message}")
                 caught = e
                 if (!done.isCompleted) done.complete(Unit)
             }
             // 审批会终结本轮并直接结束 Service，不再重试
             val onApproval: (ApprovalRequest) -> Unit = { req ->
+                Log.d("RunWatcher", "onApproval called (attempt $attempt)")
                 approvalEnded = true
                 succeeded = true
                 handleApproval(req)
@@ -155,11 +166,14 @@ class RunWatcherService : Service() {
             }
 
             val history = buildHistory()
+            Log.d("RunWatcher", "history size=${history.size}, last msg role=${history.lastOrNull()?.role}")
             try {
                 if (settings.runMode) {
+                    Log.d("RunWatcher", "runMode=true, calling createRun")
                     api.createRun(
                         baseUrl = base, apiKey = key, model = model, messages = history,
                         onRunId = { runId ->
+                            Log.d("RunWatcher", "createRun got runId=$runId")
                             scope.launch {
                                 api.subscribeRunEvents(
                                     baseUrl = base, apiKey = key, runId = runId,
@@ -172,6 +186,7 @@ class RunWatcherService : Service() {
                         onError = onError
                     )
                 } else {
+                    Log.d("RunWatcher", "runMode=false, calling streamChat")
                     api.streamChat(
                         baseUrl = base, apiKey = key, model = model, messages = history,
                         onDelta = onDelta, onThinking = onThinking, onStatus = onStatus,
@@ -180,21 +195,26 @@ class RunWatcherService : Service() {
                     )
                 }
             } catch (e: Exception) {
+                Log.e("RunWatcher", "streamChat/createRun threw (attempt $attempt): ${e.javaClass.simpleName}: ${e.message}")
                 caught = e
                 if (!done.isCompleted) done.complete(Unit)
             }
 
+            Log.d("RunWatcher", "awaiting done (attempt $attempt)")
             done.await()
+            Log.d("RunWatcher", "done returned (attempt $attempt), succeeded=$succeeded, approvalEnded=$approvalEnded, caught=${caught?.javaClass?.simpleName}")
 
-            if (approvalEnded) return  // handleApproval 已落库并结束 Service
-            if (succeeded) { finalizeTurn(); return }
+            if (approvalEnded) { Log.d("RunWatcher", "approval ended, returning"); return }
+            if (succeeded) { Log.d("RunWatcher", "succeeded, finalizing turn"); finalizeTurn(); return }
 
             // 本轮失败：非瞬时错误（鉴权 / 服务器错误等）或重试耗尽 → 真正判失败
             if (!isTransientNetworkError(caught) || attempt >= MAX_RETRIES) {
+                Log.w("RunWatcher", "Non-transient error or exhausted retries: ${caught?.javaClass?.simpleName}: ${caught?.message}")
                 handleError(caught ?: java.io.IOException("未知错误"))
                 return
             }
             // 瞬时网络错误（如 software caused connection abort / 切后台断链）：退避后重试
+            Log.d("RunWatcher", "Transient error, retrying after delay (attempt $attempt)")
             updateNotification("网络中断，正在重连… ($attempt/$MAX_RETRIES)")
             delay(backoffMillis(attempt))
         }
@@ -241,14 +261,18 @@ class RunWatcherService : Service() {
         val sys = settings.systemPrompt
         if (sys.isNotBlank()) list.add(ChatMessage("system", sys))
         val msgs = db.messageDao().getByConversation(conversationId!!).first()
+        Log.d("RunWatcher", "buildHistory: fetched ${msgs.size} messages from DB")
         for (m in msgs) {
             when (m.role) {
-                MessageEntity.ROLE_USER ->
+                MessageEntity.ROLE_USER -> {
+                    Log.d("RunWatcher", "  user msg: ${m.content.take(40)}...")
                     list.add(ChatMessage("user", m.content))
+                }
                 MessageEntity.ROLE_ASSISTANT ->
                     if (m.content.isNotBlank()) list.add(ChatMessage("assistant", m.content))
             }
         }
+        Log.d("RunWatcher", "buildHistory: built ${list.size} messages (including system=${if (sys.isNotBlank()) 1 else 0})")
         return list
     }
 
@@ -278,10 +302,12 @@ class RunWatcherService : Service() {
         val content = buffer.toString()
         val reasoning = reasoningBuffer.toString()
         val toolJson = ActiveRunState.toolCalls.value[id]?.toJsonString() ?: ""
+        Log.d("RunWatcher", "finalizeTurn: content=${content.length} chars, reasoning=${reasoning.length} chars, tools=${toolJson.length} chars")
 
         scope.launch {
             db.messageDao().getById(id)?.let { row ->
                 if (content.isBlank() && reasoning.isBlank() && toolJson.isBlank()) {
+                    Log.d("RunWatcher", "finalizeTurn: empty turn, deleting placeholder")
                     db.messageDao().deleteById(id)
                 } else {
                     db.messageDao().update(
@@ -330,6 +356,7 @@ class RunWatcherService : Service() {
         val content = buffer.toString()
         val reasoning = reasoningBuffer.toString()
         val toolJson = ActiveRunState.toolCalls.value[id]?.toJsonString() ?: ""
+        Log.d("RunWatcher", "handleApproval: title=${req.title}")
         scope.launch {
             db.messageDao().getById(id)?.let { row ->
                 if (content.isBlank() && reasoning.isBlank() && toolJson.isBlank()) {
@@ -360,6 +387,7 @@ class RunWatcherService : Service() {
     }
 
     private fun handleError(e: Throwable) {
+        Log.e("RunWatcher", "handleError: ${e.javaClass.simpleName}: ${e.message}")
         val id = assistantId
         val content = buffer.toString()
         val reasoning = reasoningBuffer.toString()

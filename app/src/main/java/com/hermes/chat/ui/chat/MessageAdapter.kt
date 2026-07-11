@@ -138,6 +138,16 @@ class MessageAdapter(
                     holder.binding.textStatus.visibility = View.GONE
                 }
 
+                // 工具调用记录展示（持久化在 MessageEntity.toolCallsJson）
+                val tools = item.toolCalls()
+                if (tools.isNotEmpty()) {
+                    holder.binding.textTools.visibility = View.VISIBLE
+                    val toolSummary = tools.joinToString("  ") { "${it.emoji} ${it.title}" }
+                    holder.binding.textTools.text = toolSummary
+                } else {
+                    holder.binding.textTools.visibility = View.GONE
+                }
+
                 holder.binding.textTime.text = formatTime(item.createdAt)
             }
             is SystemVH -> holder.binding.textMessage.text = item.content

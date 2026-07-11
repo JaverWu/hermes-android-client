@@ -170,6 +170,17 @@
             android:textColor="@color/text_secondary"
             android:visibility="gone" />
 
+        <!-- 工具调用记录（流式结束后持久化展示） -->
+        <TextView
+            android:id="@+id/textTools"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_xs"
+            android:layout_marginStart="2dp"
+            android:textSize="11sp"
+            android:textColor="@color/text_secondary"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/textTime"
             android:layout_width="wrap_content"

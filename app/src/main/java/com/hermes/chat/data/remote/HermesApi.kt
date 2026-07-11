@@ -1,5 +1,6 @@
 package com.hermes.chat.data.remote
 
+import android.util.Log
 import com.hermes.chat.data.model.ApprovalRequest
 import com.hermes.chat.data.model.ChatMessage
 import com.hermes.chat.data.model.ToolProgressEvent
@@ -34,6 +35,10 @@ class HermesApi {
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(0, TimeUnit.SECONDS) // 流式读取，不设置读超时
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .callTimeout(300, TimeUnit.SECONDS) // 整轮调用 5 分钟封顶，防无限挂起
+        .pingInterval(30, TimeUnit.SECONDS) // HTTP/2 保活 + 探测死连接
+        .retryOnConnectionFailure(true)
         .build()
 
     // ===================== 普通流式对话 =====================
@@ -128,6 +133,7 @@ class HermesApi {
         onError: (Throwable) -> Unit
     ) {
         try {
+            Log.d("HermesApi", "streamLoop starting")
             consumeSse(request) { eventType, data ->
                 when {
                     eventType == "approval_request" ->
@@ -151,22 +157,28 @@ class HermesApi {
                     }
                 }
             }
+            Log.d("HermesApi", "streamLoop completed normally → onDone")
             onDone()
         } catch (e: Exception) {
+            Log.d("HermesApi", "streamLoop error: ${e.javaClass.simpleName}: ${e.message}")
             onError(e)
         }
     }
 
     /** 读取 SSE：`event:` 设置事件类型，`data:` 回调 (eventType, data)。`data: [DONE]` 结束循环。 */
     private fun consumeSse(request: Request, onEvent: (eventType: String?, data: String) -> Unit) {
+        Log.d("HermesApi", "SSE execute → ${request.url}")
         val response = client.newCall(request).execute()
+        Log.d("HermesApi", "SSE response HTTP ${response.code}")
         if (!response.isSuccessful) {
             throw java.io.IOException("HTTP ${response.code}: ${response.body?.string().orEmpty()}")
         }
         val source = response.body!!.source()
         var eventType: String? = null
+        var lineCount = 0
         while (true) {
             val line = source.readUtf8Line() ?: break
+            lineCount++
             if (line.isEmpty()) continue
             if (line.startsWith(":")) continue // SSE 注释 / 心跳
             if (line.startsWith("event:")) {
@@ -175,11 +187,16 @@ class HermesApi {
             }
             if (line.startsWith("data:")) {
                 val data = line.substring(5).trim()
-                if (data == "[DONE]") return
+                if (data == "[DONE]") {
+                    Log.d("HermesApi", "SSE received [DONE] after $lineCount lines")
+                    return
+                }
+                if (lineCount <= 5) Log.d("HermesApi", "SSE line: $line")
                 onEvent(eventType, data)
                 eventType = null
             }
         }
+        Log.d("HermesApi", "SSE stream ended after $lineCount lines (readUtf8Line returned null)")
     }
 
     // ===================== 请求构造 =====================
