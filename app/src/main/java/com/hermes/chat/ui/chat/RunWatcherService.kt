@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -57,6 +58,9 @@ class RunWatcherService : Service() {
     private var assistantId: String? = null
     private val buffer = StringBuilder()
     private val reasoningBuffer = StringBuilder()
+    private val logoBitmap by lazy {
+        BitmapFactory.decodeResource(resources, R.drawable.ic_logo_large)
+    }
     private var approvalHandled = false
     private var lastPersist = 0L
 
@@ -407,6 +411,7 @@ class RunWatcherService : Service() {
             .setContentTitle(getString(R.string.app_name))
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_notification)
+            .setLargeIcon(logoBitmap)
             .setContentIntent(pi)
             .setOngoing(ongoing)
             .setOnlyAlertOnce(true)
@@ -430,6 +435,7 @@ class RunWatcherService : Service() {
             .setContentTitle(title)
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_notification)
+            .setLargeIcon(logoBitmap)
             .setContentIntent(pi)
             .setAutoCancel(true)
             .build()
