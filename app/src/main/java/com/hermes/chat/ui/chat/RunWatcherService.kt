@@ -119,7 +119,7 @@ class RunWatcherService : Service() {
     // ===================== 一轮对话（带断线重试） =====================
 
     /** 最多重试次数（首轮 + 重试），应对切后台 / 网络切换导致的瞬时断链。 */
-    private val MAX_RETRIES = 4
+    private val MAX_RETRIES = 2
 
     private suspend fun runTurn() {
         val base = settings.baseUrl
@@ -227,6 +227,14 @@ class RunWatcherService : Service() {
             if (approvalEnded) { Log.i("RunWatcher", "approval ended, returning"); return }
             if (succeeded) { Log.i("RunWatcher", "succeeded, finalizing turn"); finalizeTurn(); return }
 
+            // 已收到部分内容时不再重试——重试会丢弃已有内容且生成全新回复，
+            // 在 Doze 环境下重试大概率再次失败。直接保存已有部分回复。
+            if (buffer.isNotEmpty()) {
+                Log.i("RunWatcher", "Connection lost but buffer has ${buffer.length} chars, saving partial content")
+                finalizeTurn(partialWarning = true)
+                return
+            }
+
             // 本轮失败：非瞬时错误（鉴权 / 服务器错误等）或重试耗尽 → 真正判失败
             if (!isTransientNetworkError(caught) || attempt >= MAX_RETRIES) {
                 Log.w("RunWatcher", "Non-transient error or exhausted retries: ${caught?.javaClass?.simpleName}: ${caught?.message}")
@@ -284,6 +292,7 @@ class RunWatcherService : Service() {
         val msgs = db.messageDao().getByConversation(conversationId!!).first()
         Log.i("RunWatcher", "buildHistory: fetched ${msgs.size} messages from DB")
         for (m in msgs) {
+            if (m.id == assistantId) continue  // 跳过当前 streaming 占位，避免部分回复污染历史
             when (m.role) {
                 MessageEntity.ROLE_USER -> {
                     Log.i("RunWatcher", "  user msg: ${m.content.take(40)}...")
@@ -318,12 +327,12 @@ class RunWatcherService : Service() {
 
     // ===================== 结束 / 异常 =====================
 
-    private fun finalizeTurn() {
+    private fun finalizeTurn(partialWarning: Boolean = false) {
         val id = assistantId ?: return finishService()
         val bufferContent = buffer.toString()
         val reasoning = reasoningBuffer.toString()
         val toolJson = ActiveRunState.toolCalls.value[id]?.toJsonString() ?: ""
-        Log.i("RunWatcher", "finalizeTurn: buffer=${bufferContent.length} chars, reasoning=${reasoning.length} chars, tools=${toolJson.length} chars")
+        Log.i("RunWatcher", "finalizeTurn: buffer=${bufferContent.length} chars, reasoning=${reasoning.length} chars, tools=${toolJson.length} chars, partial=$partialWarning")
 
         // 用 runBlocking 确保 DB 写入完成后再 finishService，避免 scope.cancel 取消写入
         runBlocking {
@@ -375,9 +384,13 @@ class RunWatcherService : Service() {
         }
 
         ActiveRunState.reset()
-        // 通知用 bufferContent（本轮新内容），如果空则用通用提示
-        val notifText = bufferContent.take(120).ifBlank { "点击查看完整回复" }
-        notifyDone("Hermes 回复了你", notifText)
+        val notifTitle = if (partialWarning) "Hermes 回复了你（可能不完整）" else "Hermes 回复了你"
+        val notifText = if (partialWarning) {
+            "（可能不完整）${bufferContent.take(100)}".ifBlank { "回复可能不完整，点击查看" }
+        } else {
+            bufferContent.take(120).ifBlank { "点击查看完整回复" }
+        }
+        notifyDone(notifTitle, notifText)
         finishService()
     }
 
