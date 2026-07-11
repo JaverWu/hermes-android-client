@@ -288,7 +288,18 @@ class ChatActivity : AppCompatActivity() {
             cb.statusDot.backgroundTintList =
                 android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, dotColor))
             cb.root.setOnClickListener {
-                binding.textToolPreview.text = tc.preview.ifBlank { getString(R.string.tool_preview_empty) }
+                val detail = buildString {
+                    append(tc.emoji)
+                    append(" ")
+                    append(tc.title.ifBlank { "未知工具" })
+                    append("\n状态: ")
+                    append(tc.status)
+                    if (tc.preview.isNotBlank()) {
+                        append("\n\n")
+                        append(tc.preview)
+                    }
+                }
+                binding.textToolPreview.text = detail
                 binding.textToolPreview.visibility = View.VISIBLE
             }
             chips.addView(cb.root)

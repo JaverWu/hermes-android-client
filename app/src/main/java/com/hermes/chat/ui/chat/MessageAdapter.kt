@@ -138,27 +138,8 @@ class MessageAdapter(
                     holder.binding.textStatus.visibility = View.GONE
                 }
 
-                // 工具调用记录展示（持久化在 MessageEntity.toolCallsJson）
-                val tools = item.toolCalls()
-                if (tools.isNotEmpty()) {
-                    holder.binding.textTools.visibility = View.VISIBLE
-                    val toolSummary = tools.joinToString("\n") { tc ->
-                        val statusIcon = when (tc.status.lowercase(Locale.ROOT)) {
-                            "completed" -> "✅"
-                            "error" -> "❌"
-                            else -> "⏳"
-                        }
-                        val preview = tc.preview.take(80).replace("\n", " ").trim()
-                        if (preview.isNotBlank()) {
-                            "${tc.emoji} $statusIcon ${tc.title}\n   └ $preview"
-                        } else {
-                            "${tc.emoji} $statusIcon ${tc.title}"
-                        }
-                    }
-                    holder.binding.textTools.text = toolSummary
-                } else {
-                    holder.binding.textTools.visibility = View.GONE
-                }
+                // 工具调用记录已移至顶部工具条展示，气泡中不再重复显示
+                holder.binding.textTools.visibility = View.GONE
 
                 holder.binding.textTime.text = formatTime(item.createdAt)
             }

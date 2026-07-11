@@ -392,7 +392,11 @@ class RunWatcherService : Service() {
         } else {
             bufferContent.take(120).ifBlank { "点击查看完整回复" }
         }
-        notifyDone(notifTitle, notifText)
+        if (!isAppInForeground()) {
+            notifyDone(notifTitle, notifText)
+        } else {
+            Log.i("RunWatcher", "App is in foreground, skipping completion notification")
+        }
         finishService()
     }
 
@@ -475,7 +479,11 @@ class RunWatcherService : Service() {
             )
         }
         ActiveRunState.reset()
-        notifyDone("Hermes 请求出错", e.message ?: e.javaClass.simpleName)
+        if (!isAppInForeground()) {
+            notifyDone("Hermes 请求出错", e.message ?: e.javaClass.simpleName)
+        } else {
+            Log.i("RunWatcher", "App is in foreground, skipping error notification")
+        }
         finishService()
     }
 
@@ -510,7 +518,7 @@ class RunWatcherService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(text)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_logo_large)
             .setLargeIcon(logoBitmap)
             .setContentIntent(pi)
             .setOngoing(ongoing)
@@ -534,7 +542,7 @@ class RunWatcherService : Service() {
         val notif = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(text)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_logo_large)
             .setLargeIcon(logoBitmap)
             .setContentIntent(pi)
             .setAutoCancel(true)
@@ -558,6 +566,18 @@ class RunWatcherService : Service() {
                 )
             )
         }
+    }
+
+    /** 检查当前 App 是否处于前台（用户正在看界面），前台时不弹完成通知 */
+    private fun isAppInForeground(): Boolean {
+        val am = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val processes = am.runningAppProcesses ?: return false
+        for (process in processes) {
+            if (process.processName == packageName) {
+                return process.importance == android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+            }
+        }
+        return false
     }
 
     private fun finishService() {
