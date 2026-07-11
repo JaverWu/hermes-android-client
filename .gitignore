@@ -1,0 +1,29 @@
+# ===== Built application / build outputs =====
+*.apk
+*.aar
+*.ap_
+*.aab
+*.dex
+*.class
+bin/
+gen/
+out/
+build/
+release/
+.gradle/
+
+# ===== Local machine config (machine-specific) =====
+local.properties
+
+# ===== OS / editor =====
+.DS_Store
+*.log
+
+# ===== WorkBuddy local memory (contains private keys, IPs, server details) =====
+.workbuddy/
+
+# ===== Reference docs (bulky exported HTML, not project source) =====
+API server.html
+Webhooks _ Hermes Agent.html
+API server_files/
+Webhooks _ Hermes Agent_files/

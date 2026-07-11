@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 需要联网访问 Hermes 后端 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 9+ 明文流量默认禁止，调试本地后端时可放开（仅 debug 生效） -->
+    <application
+        android:name=".HermesApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
+        android:theme="@style/Theme.HermesChat">
+        <activity
+            android:name=".ui.conversations.ConversationsActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".ui.chat.ChatActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.conversations.ConversationsActivity"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".ui.settings.SettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.conversations.ConversationsActivity"
+            android:windowSoftInputMode="adjustResize" />
+    </application>
+
+</manifest>

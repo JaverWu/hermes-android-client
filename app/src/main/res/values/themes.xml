@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <style name="Theme.HermesChat" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/tg_blue</item>
+        <item name="colorPrimaryVariant">@color/tg_blue_dark</item>
+        <item name="colorOnPrimary">@color/text_on_blue</item>
+        <item name="colorAccent">@color/tg_blue</item>
+        <!-- 卡片/输入区背景 -->
+        <item name="colorSurface">@color/surface</item>
+        <!-- 页面整体背景（会话列表白底） -->
+        <item name="android:windowBackground">@color/page_bg</item>
+        <!-- 状态栏与导航栏配色 -->
+        <item name="android:statusBarColor">@color/tg_blue_dark</item>
+        <item name="android:navigationBarColor">@color/page_bg</item>
+        <!-- 关键：targetSdk≥35 时 Android 强制 edge-to-edge(状态栏透明叠加内容)，
+             此处显式退出边到边，恢复传统「状态栏预留空间+蓝底」布局，避免顶栏与潜在闪退 -->
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+        <!-- 字体层级（基础） -->
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="fontFamily">sans-serif</item>
+    </style>
+
+    <!-- 工具栏（蓝底白字，左上角导航图标白色） -->
+    <style name="Theme.HermesChat.Toolbar" parent="Widget.MaterialComponents.Toolbar">
+        <item name="android:background">?attr/colorPrimary</item>
+        <item name="titleTextColor">@color/text_on_blue</item>
+        <item name="subtitleTextColor">@color/text_on_blue_secondary</item>
+        <item name="navigationIconTint">@color/text_on_blue</item>
+    </style>
+
+    <!-- 聊天顶栏标题（18sp 中粗白字） -->
+    <style name="ToolbarTitle18" parent="TextAppearance.AppCompat">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- 分区小标题 -->
+    <style name="SectionLabel" parent="TextAppearance.AppCompat">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:paddingStart">4dp</item>
+    </style>
+
+    <!-- 圆角卡片（列表项 / 输入区 / 设置卡片） -->
+    <style name="HermesCard" parent="Widget.MaterialComponents.CardView">
+        <item name="cardBackgroundColor">@color/surface</item>
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">2dp</item>
+    </style>
+
+</resources>

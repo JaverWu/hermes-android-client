@@ -1,0 +1,134 @@
+package com.hermes.chat.ui.chat
+
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
+import com.hermes.chat.R
+import com.hermes.chat.data.local.MessageEntity
+import com.hermes.chat.databinding.ItemMessageApprovalBinding
+import com.hermes.chat.databinding.ItemMessageAssistantBinding
+import com.hermes.chat.databinding.ItemMessageSystemBinding
+import com.hermes.chat.databinding.ItemMessageUserBinding
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
+
+class MessageAdapter(
+    private val onApprovalClick: (MessageEntity, String) -> Unit
+) : ListAdapter<MessageEntity, RecyclerView.ViewHolder>(DIFF) {
+
+    override fun getItemViewType(position: Int): Int = when (getItem(position).role) {
+        MessageEntity.ROLE_USER -> VIEW_USER
+        MessageEntity.ROLE_ASSISTANT -> VIEW_ASSISTANT
+        MessageEntity.ROLE_APPROVAL -> VIEW_APPROVAL
+        else -> VIEW_SYSTEM
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        val inflater = LayoutInflater.from(parent.context)
+        return when (viewType) {
+            VIEW_USER -> UserVH(ItemMessageUserBinding.inflate(inflater, parent, false))
+            VIEW_ASSISTANT -> AssistantVH(ItemMessageAssistantBinding.inflate(inflater, parent, false))
+            VIEW_APPROVAL -> ApprovalVH(ItemMessageApprovalBinding.inflate(inflater, parent, false))
+            else -> SystemVH(ItemMessageSystemBinding.inflate(inflater, parent, false))
+        }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        val item = getItem(position)
+        when (holder) {
+            is UserVH -> {
+                holder.binding.textMessage.text = item.content
+                holder.binding.textTime.text = formatTime(item.createdAt)
+            }
+            is AssistantVH -> {
+                holder.binding.textMessage.text =
+                    if (item.content.isBlank()) "Hermes 正在输入…" else item.content
+                holder.binding.textTime.text = formatTime(item.createdAt)
+            }
+            is SystemVH -> holder.binding.textMessage.text = item.content
+            is ApprovalVH -> holder.bind(item, onApprovalClick)
+        }
+    }
+
+    class UserVH(val binding: ItemMessageUserBinding) : RecyclerView.ViewHolder(binding.root)
+    class AssistantVH(val binding: ItemMessageAssistantBinding) : RecyclerView.ViewHolder(binding.root)
+    class SystemVH(val binding: ItemMessageSystemBinding) : RecyclerView.ViewHolder(binding.root)
+    class ApprovalVH(val binding: ItemMessageApprovalBinding) : RecyclerView.ViewHolder(binding.root) {
+        fun bind(item: MessageEntity, onClick: (MessageEntity, String) -> Unit) {
+            val ctx = binding.root.context
+            binding.textTitle.text = item.approvalTitle.ifBlank { "Hermes 请求你的确认" }
+            if (item.approvalDetail.isNotBlank()) {
+                binding.textDetail.visibility = View.VISIBLE
+                binding.textDetail.text = item.approvalDetail
+            } else {
+                binding.textDetail.visibility = View.GONE
+            }
+
+            binding.layoutOptions.removeAllViews()
+            val resolved = item.approvalStatus == MessageEntity.STATUS_RESOLVED
+            val blue = ContextCompat.getColor(ctx, R.color.approval_btn_bg)
+            val white = ContextCompat.getColor(ctx, R.color.approval_btn_text)
+            val gray = ContextCompat.getColor(ctx, R.color.text_secondary)
+            val radius = ctx.resources.getDimensionPixelSize(R.dimen.approval_btn_radius)
+
+            item.options().forEach { option ->
+                val btn = MaterialButton(ctx).apply {
+                    text = option
+                    isAllCaps = false
+                    isEnabled = !resolved
+                    insetTop = 0
+                    insetBottom = 0
+                    cornerRadius = radius
+                    backgroundTintList = android.content.res.ColorStateList.valueOf(
+                        if (resolved) gray else blue
+                    )
+                    setTextColor(if (resolved) white else white)
+                    setOnClickListener { onClick(item, option) }
+                }
+                val params = ViewGroup.MarginLayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply { bottomMargin = 8 }
+                binding.layoutOptions.addView(btn, params)
+            }
+            if (resolved) {
+                val tag = TextView(ctx).apply {
+                    text = "已处理"
+                    setTextColor(gray)
+                }
+                binding.layoutOptions.addView(tag)
+            }
+        }
+    }
+
+    companion object {
+        private val DIFF = object : DiffUtil.ItemCallback<MessageEntity>() {
+            override fun areItemsTheSame(a: MessageEntity, b: MessageEntity) = a.id == b.id
+            override fun areContentsTheSame(a: MessageEntity, b: MessageEntity) = a == b
+        }
+
+        private const val VIEW_USER = 1
+        private const val VIEW_ASSISTANT = 2
+        private const val VIEW_APPROVAL = 3
+        private const val VIEW_SYSTEM = 4
+
+        private val FMT_TIME = SimpleDateFormat("HH:mm", Locale.getDefault())
+        private val FMT_DATE = SimpleDateFormat("MM-dd", Locale.getDefault())
+
+        private fun formatTime(ts: Long): String {
+            val now = Calendar.getInstance()
+            val cal = Calendar.getInstance().apply { timeInMillis = ts }
+            return if (now.get(Calendar.YEAR) == cal.get(Calendar.YEAR) &&
+                now.get(Calendar.DAY_OF_YEAR) == cal.get(Calendar.DAY_OF_YEAR)
+            ) FMT_TIME.format(Date(ts)) else FMT_DATE.format(Date(ts))
+        }
+    }
+}

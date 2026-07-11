@@ -1,0 +1,119 @@
+# Hermes 对话（Android）
+
+一个面向 **Android 10.0（API 29）及以上** 的客户端 App，用于和 Hermes 后端进行**流式对话**，
+并在 Hermes 给出操作选项（如 `/approve`、`/approve session`、`/deny`）时**一键点击确认**，
+同时用本地数据库**记录并恢复历史对话**。
+
+## 功能
+
+- 🔁 **流式对话**：基于 OpenAI 兼容的 `POST /v1/chat/completions` SSE 流式接口，逐字渲染回复。
+- ✅ **审批一键确认**：后端下发的「审批请求」会被解析成可点击按钮；点击后把对应指令（如 `/approve`）
+  当作一条用户消息回传给对话流，继续交互。
+- 💾 **对话记忆**：使用 Room 本地数据库持久化「会话列表 + 消息」，支持新建 / 切换 / 删除会话，
+  关闭 App 后再次打开可恢复历史。
+- ⚙️ **可配置连接**：API Base URL、API Key、模型名、系统提示词均在 App 内「设置」页填写。
+
+## 构建与运行
+
+> ⚠️ 本仓库在一台没有 Android SDK 的机器上生成，未做编译验证。请用 **Android Studio（Hedgehog / Iguana 及以上）** 打开并构建。
+
+1. 用 Android Studio 打开本目录（`File → Open`，选择 `安卓版的hermes`）。
+2. Android Studio 会自动根据 `gradle/wrapper` 下载 Gradle 8.9，并同步依赖（需联网）。
+3. 连接一台 Android 10+ 设备或启动模拟器（API 29+）。
+4. 点击 ▶ Run 安装运行。
+   - 若你更习惯命令行：`./gradlew assembleDebug`（macOS / Linux）或 `gradlew.bat assembleDebug`（Windows）。
+
+**环境要求**：Android SDK Platform 34、Build-Tools 34.x、JDK 17（Android Studio 自带）。
+
+## 配置后端
+
+首次进入后，打开右上角「设置」填写。设置页顶部提供**连接模式**选择，二选一：
+
+### 连接模式一：对话 API（推荐，App 内双向对话）
+
+向 Hermes 的 OpenAI 兼容 SSE 接口流式请求，回复直接渲染在 App 内，支持审批一键确认与历史恢复。需填写：
+
+| 字段 | 说明 | 示例 |
+| --- | --- | --- |
+| API Base URL | Hermes 的 OpenAI 兼容接口根地址 | `http://192.168.1.10:8644/v1` 或 `https://your-host/v1` |
+| API Key | `Authorization: Bearer <key>` | `sk-xxxx` |
+| 模型名称 | 请求体里的 `model` 字段 | `hermes` |
+| 系统提示词 | 可选，作为 `system` 角色注入 | — |
+
+> 应用会向 `{BaseURL}/chat/completions` 发送请求。
+
+### 连接模式二：Webhook 触发（仅触发 Agent，回复走服务端渠道）
+
+作为**备用连接模式**，通过 `POST` 一个 JSON 负载到指定 Webhook 路由来触发 Hermes Agent 跑任务。
+此模式**回复不会回到 App 内**——服务端会按 `deliver` 配置把回复投递到 Telegram / 飞书 / 企微等外部渠道。
+
+需填写：
+
+| 字段 | 说明 | 示例 |
+| --- | --- | --- |
+| Webhook URL | 触发端点，形如 `POST {url}` | `http://192.168.1.10:8644/webhooks/phone` |
+| Webhook 密钥 | 路由 secret（HMAC-SHA256）；可选 | `routing_secret` |
+
+Webhook 相关约定（参考 Nous Research Hermes Agent Webhook 适配器）：
+
+- **端点**：`POST http://<host>:8644/webhooks/<route>`
+- **鉴权**：默认 HMAC-SHA256，GitHub 风格头 `X-Hub-Signature-256: sha256=<hex>`，对**原始请求体**签名；
+  密钥为路由 secret（或全局 `WEBHOOK_SECRET`）。密钥留空或设为 `INSECURE_NO_AUTH` 则跳过签名校验。
+- **事件类型**：通过 `X-GitHub-Event` 头传递（App 固定为 `chat`）。
+- **请求体**：`{"event_type":"chat","role":"user","message":"<文本>","conversation_id":"<id>"}`。
+- **响应**：仅表示投递结果（`{"status":"delivered",...}`），**不含 Agent 回复**。
+  回复由服务端投递到外部渠道，因此 App 内只会显示「已触发」提示，不会显示 Agent 的回答。
+
+> 切换到 Webhook 模式后，在对话页发送消息即视为「触发 Agent」，App 内不创建空的回复气泡。
+
+## 审批事件协议
+
+App 同时支持两种下发方式（二选一或并存）：
+
+### 1. 结构化 SSE 事件（推荐）
+
+后端在流式响应里下发一个**命名事件**：
+
+```
+event: approval_request
+data: {"id":"r1","title":"需要执行命令","detail":"npm install","options":["/approve","/approve session","/deny"]}
+```
+
+App 解析后渲染成卡片 + 按钮；点击任一选项即把该字符串（如 `/approve`）作为用户消息回传。
+
+### 2. 文本兜底检测
+
+如果后端只是在回复正文里写了类似：
+
+```
+我将执行：npm install
+可选操作：/approve  /approve session  /deny
+```
+
+App 会自动识别正文中的多个 `/xxx` 指令（如 `/approve`、`/approve session`、`/deny`、`/reject`），
+当命中 ≥ 2 个不同指令时，把它们渲染成可点击按钮。匹配规则见
+`app/src/main/java/com/hermes/chat/data/remote/ApprovalDetector.kt`，可按需修改正则。
+
+> 如果你只想用结构化事件、不要文本兜底，把 `ApprovalDetector.detect` 直接 `return emptyList()` 即可。
+
+## 目录结构
+
+```
+app/src/main/java/com/hermes/chat/
+├── HermesApplication.kt            # Application，提供 Room 数据库
+├── data/
+│   ├── model/                     # ChatMessage / ApprovalRequest
+│   ├── local/                     # Room 实体、DAO、AppDatabase
+│   ├── preferences/               # SettingsRepository（连接配置）
+│   └── remote/                    # HermesApi（SSE 流式）、ApprovalDetector
+└── ui/
+    ├── chat/                      # ChatActivity + ChatViewModel + MessageAdapter
+    ├── conversations/             # 会话列表
+    └── settings/                  # 设置页
+```
+
+## 备注
+
+- `android:usesCleartextTraffic="true"` 已开启，方便连接本地 HTTP 调试后端；正式发布前建议关闭或改用 HTTPS。
+- 流式读取不设读超时（`readTimeout=0`），以兼容长时间生成。
+- 审批卡片与系统提示不会进入发给后端的对话历史；回传的 `/approve` 等指令会以 `user` 角色进入历史。

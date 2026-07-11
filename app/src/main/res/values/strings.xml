@@ -1,0 +1,46 @@
+<resources>
+    <string name="app_name">Hermes 对话</string>
+
+    <string name="title_home">Hermes</string>
+    <string name="title_conversations">对话历史</string>
+    <string name="title_settings">设置</string>
+    <string name="title_chat">Hermes</string>
+
+    <string name="action_new_chat">新建对话</string>
+    <string name="action_settings">设置</string>
+    <string name="action_delete">删除</string>
+    <string name="action_send">发送</string>
+    <string name="action_attach">附件</string>
+
+    <string name="hint_input">输入消息…（回车发送，Shift+回车换行）</string>
+    <string name="hint_message">消息</string>
+    <string name="empty_conversations">还没有对话，点击右下角 + 新建。</string>
+    <string name="empty_chat">和 Hermes 开始对话吧</string>
+    <string name="typing">Hermes 正在输入…</string>
+
+    <string name="confirm_delete_title">删除对话</string>
+    <string name="confirm_delete_msg">确定删除该对话及其所有消息？此操作不可恢复。</string>
+
+    <string name="toast_config_first">请先在「设置」中填写 API 地址、Key 和模型</string>
+    <string name="toast_empty_input">请输入内容</string>
+
+    <!-- 设置页 -->
+    <string name="profile_name">Hermes</string>
+    <string name="profile_subtitle">AI 助手</string>
+    <string name="section_connection">连接设置</string>
+    <string name="section_about">关于</string>
+    <string name="about_version">Hermes 对话 v1.0</string>
+    <string name="about_desc">基于 Hermes 后端的本地聊天客户端，支持流式回复与工具调用审批。</string>
+    <string name="settings_base_url">API Base URL</string>
+    <string name="settings_base_url_hint">例如 https://your-host/v1</string>
+    <string name="settings_api_key">API Key</string>
+    <string name="settings_api_key_hint">Bearer Token</string>
+    <string name="settings_system_prompt">系统提示词（可选）</string>
+    <string name="settings_system_prompt_hint">设定 Hermes 的角色与行为</string>
+    <string name="settings_save">保存</string>
+    <string name="settings_saved">已保存</string>
+
+    <!-- 审批卡片 -->
+    <string name="approval_hint">Hermes 请求你的确认</string>
+    <string name="approval_detail_hint">请求内容</string>
+</resources>

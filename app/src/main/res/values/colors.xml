@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 基础色 -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- ===== Telegram 设计系统配色 ===== -->
+    <!-- 主色 / 强调 -->
+    <color name="tg_blue">#3390EC</color>
+    <color name="tg_blue_dark">#2B7CD3</color>
+    <color name="tg_blue_pressed">#2470BD</color>
+
+    <!-- 页面与卡片背景 -->
+    <color name="page_bg">#FFFFFF</color>
+    <color name="chat_bg">#F0F2F5</color>
+    <color name="surface">#FFFFFF</color>
+
+    <!-- 气泡（收进） -->
+    <color name="bubble_in_bg">#FFFFFF</color>
+    <color name="bubble_in_border">#E6E8EB</color>
+    <color name="bubble_in_text">#1C1C1E</color>
+
+    <!-- 气泡（发出） -->
+    <color name="bubble_out_bg">#3390EC</color>
+    <color name="bubble_out_text">#FFFFFF</color>
+
+    <!-- 文本 -->
+    <color name="text_primary">#1C1C1E</color>
+    <color name="text_secondary">#8A8F98</color>
+    <color name="text_on_blue">#FFFFFF</color>
+    <color name="text_on_blue_secondary">#B3FFFFFF</color>
+
+    <!-- 分隔线 -->
+    <color name="divider">#E6E8EB</color>
+
+    <!-- 审批卡片（精致暖橙） -->
+    <color name="approval_bg">#FFF6E5</color>
+    <color name="approval_border">#FFD98A</color>
+    <color name="approval_title">#B8740A</color>
+    <color name="approval_btn_bg">#3390EC</color>
+    <color name="approval_btn_text">#FFFFFF</color>
+
+    <!-- 头像调色板（按名称 hash 选取） -->
+    <color name="avatar_1">#E17076</color>
+    <color name="avatar_2">#7BC862</color>
+    <color name="avatar_3">#65AADD</color>
+    <color name="avatar_4">#A695E7</color>
+    <color name="avatar_5">#EE7AAE</color>
+    <color name="avatar_6">#F0A25E</color>
+
+    <!-- 兼容旧引用（映射为等价 Telegram 色，避免遗留引用断裂） -->
+    <color name="hermes_primary">#3390EC</color>
+    <color name="hermes_primary_dark">#2B7CD3</color>
+    <color name="hermes_on_primary">#FFFFFF</color>
+    <color name="bubble_user">#3390EC</color>
+    <color name="bubble_user_text">#FFFFFF</color>
+    <color name="bubble_assistant">#FFFFFF</color>
+    <color name="bubble_assistant_text">#1C1C1E</color>
+    <color name="bubble_assistant_border">#E6E8EB</color>
+    <color name="approval_text">#B8740A</color>
+    <color name="system_text">#8A8F98</color>
+</resources>
