@@ -26,6 +26,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -85,7 +87,10 @@ class RunWatcherService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
-    // ===================== 一轮对话 =====================
+    // ===================== 一轮对话（带断线重试） =====================
+
+    /** 最多重试次数（首轮 + 重试），应对切后台 / 网络切换导致的瞬时断链。 */
+    private val MAX_RETRIES = 4
 
     private suspend fun runTurn() {
         val base = settings.baseUrl
@@ -97,8 +102,7 @@ class RunWatcherService : Service() {
             return
         }
 
-        val history = buildHistory()
-
+        // 流式回调：写入缓冲 + ActiveRunState + 节流落库（每轮复用同一组回调）
         val onDelta: (String) -> Unit = {
             buffer.append(it)
             ActiveRunState.appendContent(it)
@@ -116,37 +120,116 @@ class RunWatcherService : Service() {
             ActiveRunState.upsertTool(ToolCall(ev.id, ev.emoji, ev.title, ev.status, ev.preview, true))
             persistThrottled()
         }
-        val onApproval: (ApprovalRequest) -> Unit = { handleApproval(it) }
-        val onDone: () -> Unit = { finalizeTurn() }
-        val onError: (Throwable) -> Unit = { handleError(it) }
 
-        try {
-            if (settings.runMode) {
-                api.createRun(
-                    baseUrl = base, apiKey = key, model = model, messages = history,
-                    onRunId = { runId ->
-                        scope.launch {
-                            api.subscribeRunEvents(
-                                baseUrl = base, apiKey = key, runId = runId,
-                                onDelta = onDelta, onThinking = onThinking, onStatus = onStatus,
-                                onToolProgress = onToolProgress, onApproval = onApproval,
-                                onDone = onDone, onError = onError
-                            )
-                        }
-                    },
-                    onError = onError
-                )
-            } else {
-                api.streamChat(
-                    baseUrl = base, apiKey = key, model = model, messages = history,
-                    onDelta = onDelta, onThinking = onThinking, onStatus = onStatus,
-                    onToolProgress = onToolProgress, onApproval = onApproval,
-                    onDone = onDone, onError = onError
-                )
+        var attempt = 0
+
+        while (attempt <= MAX_RETRIES) {
+            attempt++
+            resetBuffers() // 清空缓冲与实时态，从干净状态重新拉流
+
+            // 用 CompletableDeferred 等待本轮真正结束（run 模式子协程也覆盖）
+            val done = CompletableDeferred<Unit>()
+
+            var succeeded = false
+            var approvalEnded = false
+            var caught: Throwable? = null
+
+            val onDone: () -> Unit = {
+                succeeded = true
+                if (!done.isCompleted) done.complete(Unit)
             }
-        } catch (e: Exception) {
-            handleError(e)
+            val onError: (Throwable) -> Unit = { e ->
+                caught = e
+                if (!done.isCompleted) done.complete(Unit)
+            }
+            // 审批会终结本轮并直接结束 Service，不再重试
+            val onApproval: (ApprovalRequest) -> Unit = { req ->
+                approvalEnded = true
+                succeeded = true
+                handleApproval(req)
+                if (!done.isCompleted) done.complete(Unit)
+            }
+
+            val history = buildHistory()
+            try {
+                if (settings.runMode) {
+                    api.createRun(
+                        baseUrl = base, apiKey = key, model = model, messages = history,
+                        onRunId = { runId ->
+                            scope.launch {
+                                api.subscribeRunEvents(
+                                    baseUrl = base, apiKey = key, runId = runId,
+                                    onDelta = onDelta, onThinking = onThinking, onStatus = onStatus,
+                                    onToolProgress = onToolProgress, onApproval = onApproval,
+                                    onDone = onDone, onError = onError
+                                )
+                            }
+                        },
+                        onError = onError
+                    )
+                } else {
+                    api.streamChat(
+                        baseUrl = base, apiKey = key, model = model, messages = history,
+                        onDelta = onDelta, onThinking = onThinking, onStatus = onStatus,
+                        onToolProgress = onToolProgress, onApproval = onApproval,
+                        onDone = onDone, onError = onError
+                    )
+                }
+            } catch (e: Exception) {
+                caught = e
+                if (!done.isCompleted) done.complete(Unit)
+            }
+
+            done.await()
+
+            if (approvalEnded) return  // handleApproval 已落库并结束 Service
+            if (succeeded) { finalizeTurn(); return }
+
+            // 本轮失败：非瞬时错误（鉴权 / 服务器错误等）或重试耗尽 → 真正判失败
+            if (!isTransientNetworkError(caught) || attempt >= MAX_RETRIES) {
+                handleError(caught ?: java.io.IOException("未知错误"))
+                return
+            }
+            // 瞬时网络错误（如 software caused connection abort / 切后台断链）：退避后重试
+            updateNotification("网络中断，正在重连… ($attempt/$MAX_RETRIES)")
+            delay(backoffMillis(attempt))
         }
+    }
+
+    /** 重置本轮缓冲与共享实时态，使重试从干净状态重新开始。 */
+    private fun resetBuffers() {
+        buffer.setLength(0)
+        reasoningBuffer.setLength(0)
+        lastPersist = 0L
+        approvalHandled = false
+        ActiveRunState.reset()
+        ActiveRunState.begin(assistantId!!)
+    }
+
+    /** 判断是否为可重试的瞬时网络错误（切后台 / 网络切换 / 心跳超时等）。 */
+    private fun isTransientNetworkError(e: Throwable?): Boolean {
+        if (e == null) return false
+        val msg = (e.message ?: "").lowercase()
+        val isNetType = e is java.net.SocketException
+            || e is java.net.SocketTimeoutException
+            || e is java.io.EOFException
+            || e is java.net.ProtocolException
+        return isNetType
+            || msg.contains("connection abort")
+            || msg.contains("connection reset")
+            || msg.contains("broken pipe")
+            || msg.contains("software caused")
+            || msg.contains("econn")
+            || msg.contains("timeout")
+            || msg.contains("unexpected end of stream")
+            || msg.contains("failed to connect")
+            || msg.contains("network is unreachable")
+    }
+
+    /** 指数退避：1s, 2s, 4s, 8s（封顶 8s）。 */
+    private fun backoffMillis(attempt: Int): Long {
+        val base = 1000L * (1 shl (attempt - 1))
+        return minOf(base, 8000L)
     }
 
     private suspend fun buildHistory(): List<ChatMessage> {
