@@ -24,6 +24,8 @@ local.properties
 
 # ===== Reference docs (bulky exported HTML, not project source) =====
 API server.html
-Webhooks _ Hermes Agent.html
 API server_files/
-Webhooks _ Hermes Agent_files/
+*Hermes Agent.html
+*Hermes Agent_files/
+附件.png
+
