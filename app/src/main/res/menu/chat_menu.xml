@@ -15,4 +15,9 @@
         android:icon="@drawable/ic_settings"
         android:title="@string/action_settings"
         app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_run_mode"
+        android:checkable="true"
+        android:title="@string/run_mode_off"
+        app:showAsAction="never" />
 </menu>

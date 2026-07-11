@@ -53,6 +53,21 @@
     <color name="approval_btn_bg">#007AFF</color>
     <color name="approval_btn_text">#FFFFFF</color>
 
+    <!-- 工具调用卡片（VS Code Copilot 风：左强调条 + 折叠） -->
+    <color name="tool_card_bg">#F2F2F7</color>
+    <color name="tool_card_border">#D1D1D6</color>
+    <color name="tool_card_accent">#007AFF</color>
+    <color name="tool_card_title">#000000</color>
+    <color name="tool_card_preview">#48484A</color>
+    <color name="tool_card_status_bg">#E9E9EB</color>
+    <color name="tool_card_status_text">#8E8E93</color>
+
+    <!-- 推理折叠卡片 -->
+    <color name="reasoning_bg">#F2F2F7</color>
+    <color name="reasoning_border">#D1D1D6</color>
+    <color name="reasoning_title">#8E8E93</color>
+    <color name="reasoning_text">#48484A</color>
+
     <!-- 头像调色板（iOS 风，按名称 hash 选取） -->
     <color name="avatar_1">#007AFF</color>
     <color name="avatar_2">#34C759</color>

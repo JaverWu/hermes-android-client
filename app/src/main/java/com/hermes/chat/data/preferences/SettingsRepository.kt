@@ -42,6 +42,16 @@ class SettingsRepository(context: Context) {
         get() = prefs.getInt(KEY_AI_AVATAR, 0)
         set(v) = prefs.edit().putInt(KEY_AI_AVATAR, v).apply()
 
+    // ===== 草稿：按会话 id 缓存未发送的输入，退出再进不丢失 =====
+    fun getDraft(conversationId: String): String =
+        prefs.getString(KEY_DRAFT + conversationId, "") ?: ""
+
+    fun setDraft(conversationId: String, text: String) =
+        prefs.edit().putString(KEY_DRAFT + conversationId, text).apply()
+
+    fun clearDraft(conversationId: String) =
+        prefs.edit().remove(KEY_DRAFT + conversationId).apply()
+
     // 配置只需 API 地址 + Key；模型由 Hermes 默认提供，不再强制要求。
     fun isConfigured(): Boolean =
         baseUrl.isNotBlank() && apiKey.isNotBlank()
@@ -56,6 +66,7 @@ class SettingsRepository(context: Context) {
         private const val KEY_NIGHT_MODE = "night_mode"
         private const val KEY_USER_AVATAR = "user_avatar_index"
         private const val KEY_AI_AVATAR = "ai_avatar_index"
+        private const val KEY_DRAFT = "draft_"
 
         const val MODE_SYSTEM = "system"
         const val MODE_LIGHT = "light"

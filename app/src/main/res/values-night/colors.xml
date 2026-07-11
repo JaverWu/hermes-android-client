@@ -50,6 +50,21 @@
     <color name="approval_btn_bg">#0A84FF</color>
     <color name="approval_btn_text">#FFFFFF</color>
 
+    <!-- 工具调用卡片 -->
+    <color name="tool_card_bg">#1C1C1E</color>
+    <color name="tool_card_border">#38383A</color>
+    <color name="tool_card_accent">#0A84FF</color>
+    <color name="tool_card_title">#FFFFFF</color>
+    <color name="tool_card_preview">#C7C7CC</color>
+    <color name="tool_card_status_bg">#2C2C2E</color>
+    <color name="tool_card_status_text">#8E8E93</color>
+
+    <!-- 推理折叠卡片 -->
+    <color name="reasoning_bg">#1C1C1E</color>
+    <color name="reasoning_border">#38383A</color>
+    <color name="reasoning_title">#8E8E93</color>
+    <color name="reasoning_text">#C7C7CC</color>
+
     <!-- 头像调色板（深色略暗） -->
     <color name="avatar_1">#0A84FF</color>
     <color name="avatar_2">#30D158</color>

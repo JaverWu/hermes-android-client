@@ -35,7 +35,7 @@
     <string name="section_appearance">外观</string>
     <string name="section_avatar">头像</string>
     <string name="section_about">关于</string>
-    <string name="about_version">Hermes 对话 v1.1.0</string>
+    <string name="about_version">Hermes 对话 v1.2.0</string>
     <string name="about_desc">基于 Hermes 后端的本地聊天客户端，支持流式回复、Markdown 渲染、实时思考状态与工具调用审批。</string>
     <string name="settings_base_url">API 地址</string>
     <string name="settings_base_url_hint">这里填入 API 地址（形如 https://your-host/v1）</string>
@@ -61,4 +61,25 @@
     <!-- 审批卡片 -->
     <string name="approval_hint">Hermes 请求你的确认</string>
     <string name="approval_detail_hint">请求内容</string>
+
+    <!-- 工具调用卡片 -->
+    <string name="tool_calls_title">工具调用</string>
+    <string name="tool_status_started">进行中</string>
+    <string name="tool_status_completed">已完成</string>
+    <string name="tool_status_error">出错</string>
+    <string name="tool_preview_empty">（无预览）</string>
+
+    <!-- 推理折叠 -->
+    <string name="reasoning_title">思考过程</string>
+
+    <!-- 长运行模式 -->
+    <string name="action_run_mode">长运行模式</string>
+    <string name="run_mode_on">长运行模式：开</string>
+    <string name="run_mode_off">长运行模式：关</string>
+    <string name="run_mode_hint">开启后将使用 /v1/runs 长任务接口</string>
+
+    <!-- 删除消息 -->
+    <string name="action_delete_message">删除消息</string>
+    <string name="confirm_delete_message_title">删除消息</string>
+    <string name="confirm_delete_message_msg">确定删除这条消息？此操作不可恢复。</string>
 </resources>

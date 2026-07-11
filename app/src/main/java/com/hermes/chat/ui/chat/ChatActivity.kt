@@ -1,7 +1,10 @@
 package com.hermes.chat.ui.chat
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Toast
@@ -10,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.hermes.chat.R
+import com.hermes.chat.data.local.MessageEntity
 import com.hermes.chat.data.preferences.SettingsRepository
 import com.hermes.chat.databinding.ActivityChatBinding
 import com.hermes.chat.ui.common.AvatarPresets
@@ -17,7 +21,6 @@ import com.hermes.chat.ui.common.AvatarRole
 import com.hermes.chat.ui.common.showAvatarPicker
 import com.hermes.chat.ui.common.showAvatarRoleChooser
 import com.hermes.chat.ui.settings.SettingsActivity
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 class ChatActivity : AppCompatActivity() {
@@ -43,13 +46,34 @@ class ChatActivity : AppCompatActivity() {
                     startActivity(Intent(this, SettingsActivity::class.java)); true
                 }
                 R.id.action_edit_avatar -> { openAvatarEditor(); true }
+                R.id.action_run_mode -> {
+                    viewModel.toggleRunMode()
+                    updateRunModeMenuItem()
+                    true
+                }
                 else -> false
             }
         }
+        updateRunModeMenuItem()
 
-        adapter = MessageAdapter(settings) { msg, option -> viewModel.respondToApproval(msg.id, option) }
+        adapter = MessageAdapter(
+            settings,
+            { msg, option -> viewModel.respondToApproval(msg.id, option) },
+            { msg -> confirmDeleteMessage(msg) }
+        )
         binding.recyclerMessages.layoutManager = LinearLayoutManager(this)
         binding.recyclerMessages.adapter = adapter
+
+        // 草稿回填：进入会话时恢复未发送的输入
+        binding.editInput.setText(viewModel.loadDraft())
+        binding.editInput.setSelection(binding.editInput.text?.length ?: 0)
+        binding.editInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                viewModel.saveDraft(s?.toString().orEmpty())
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
 
         binding.buttonSend.setOnClickListener { send() }
         binding.editInput.setOnEditorActionListener { _, actionId, _ ->
@@ -75,7 +99,6 @@ class ChatActivity : AppCompatActivity() {
                 adapter.setStreamingState(viewModel.thinkingContent.value, viewModel.statusText.value)
             }
         }
-        // 思考流 / 状态变化时需要重新绑定以刷新显示
         lifecycleScope.launch {
             viewModel.thinkingContent.collect {
                 adapter.setStreamingState(it, viewModel.statusText.value)
@@ -88,6 +111,30 @@ class ChatActivity : AppCompatActivity() {
                 adapter.notifyItemRangeChanged(0, adapter.itemCount)
             }
         }
+        lifecycleScope.launch {
+            viewModel.toolCalls.collect { map ->
+                adapter.setToolCalls(map)
+                adapter.notifyItemRangeChanged(0, adapter.itemCount)
+                if (adapter.itemCount > 0) {
+                    binding.recyclerMessages.scrollToPosition(adapter.itemCount - 1)
+                }
+            }
+        }
+        lifecycleScope.launch {
+            viewModel.runMode.collect { updateRunModeMenuItem() }
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        viewModel.saveDraft(binding.editInput.text?.toString().orEmpty())
+    }
+
+    private fun updateRunModeMenuItem() {
+        val item = binding.toolbar.menu.findItem(R.id.action_run_mode) ?: return
+        val on = viewModel.runMode.value
+        item.isChecked = on
+        item.title = if (on) getString(R.string.run_mode_on) else getString(R.string.run_mode_off)
     }
 
     /** 在对话界面中修改用户 / Hermes 头像 */
@@ -97,10 +144,18 @@ class ChatActivity : AppCompatActivity() {
             val current = if (role == AvatarRole.USER) settings.userAvatarIndex else settings.aiAvatarIndex
             showAvatarPicker(this, presets, current) { idx ->
                 if (role == AvatarRole.USER) settings.userAvatarIndex = idx else settings.aiAvatarIndex = idx
-                // 立即刷新当前对话中的头像
                 adapter.notifyItemRangeChanged(0, adapter.itemCount)
             }
         }
+    }
+
+    private fun confirmDeleteMessage(msg: MessageEntity) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.confirm_delete_message_title)
+            .setMessage(R.string.confirm_delete_message_msg)
+            .setPositiveButton(android.R.string.ok) { _, _ -> viewModel.deleteMessage(msg.id) }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun send() {
@@ -114,7 +169,6 @@ class ChatActivity : AppCompatActivity() {
     }
 
     private fun startNewChat() {
-        // 不带 conversationId 重新打开自己，得到一个干净的会话
         startActivity(Intent(this, ChatActivity::class.java))
         finish()
     }
