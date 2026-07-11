@@ -31,10 +31,10 @@
     <string name="section_about">关于</string>
     <string name="about_version">Hermes 对话 v1.0</string>
     <string name="about_desc">基于 Hermes 后端的本地聊天客户端，支持流式回复与工具调用审批。</string>
-    <string name="settings_base_url">API Base URL</string>
-    <string name="settings_base_url_hint">例如 https://your-host/v1</string>
-    <string name="settings_api_key">API Key</string>
-    <string name="settings_api_key_hint">Bearer Token</string>
+    <string name="settings_base_url">API 地址</string>
+    <string name="settings_base_url_hint">这里填入 API 地址（形如 https://your-host/v1）</string>
+    <string name="settings_api_key">API 密钥</string>
+    <string name="settings_api_key_hint">这里填入api key</string>
     <string name="settings_system_prompt">系统提示词（可选）</string>
     <string name="settings_system_prompt_hint">设定 Hermes 的角色与行为</string>
     <string name="settings_save">保存</string>

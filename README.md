@@ -35,9 +35,9 @@
 
 | 字段 | 说明 | 示例 |
 | --- | --- | --- |
-| API Base URL | Hermes 的 OpenAI 兼容接口根地址 | `http://192.168.1.10:8644/v1` 或 `https://your-host/v1` |
-| API Key | `Authorization: Bearer <key>` | `sk-xxxx` |
-| 模型名称 | 请求体里的 `model` 字段 | `hermes` |
+| API 地址 | Hermes 的 OpenAI 兼容接口根地址 | `https://your-hermes-host/v1` |
+| API 密钥 | `Authorization: Bearer <key>` | `这里填入api key` |
+| 模型名称 | 请求体里的 `model` 字段 | `hermes-agent` |
 | 系统提示词 | 可选，作为 `system` 角色注入 | — |
 
 > 应用会向 `{BaseURL}/chat/completions` 发送请求。
@@ -51,7 +51,7 @@
 
 | 字段 | 说明 | 示例 |
 | --- | --- | --- |
-| Webhook URL | 触发端点，形如 `POST {url}` | `http://192.168.1.10:8644/webhooks/phone` |
+| Webhook URL | 触发端点，形如 `POST {url}` | `https://your-hermes-host/webhooks/phone` |
 | Webhook 密钥 | 路由 secret（HMAC-SHA256）；可选 | `routing_secret` |
 
 Webhook 相关约定（参考 Nous Research Hermes Agent Webhook 适配器）：
