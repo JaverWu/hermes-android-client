@@ -217,6 +217,24 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+            if (event.action == android.view.KeyEvent.ACTION_UP) {
+                if (binding.layoutSlashInline.visibility == View.VISIBLE) {
+                    hideSlashInline()
+                    return true
+                }
+                binding.editInput.clearFocus()
+                finish()
+                return true
+            }
+            if (event.action == android.view.KeyEvent.ACTION_DOWN) {
+                return true
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
     /** 检查用户是否在列表底部附近（用于判断是否需要自动滚动） */
     private fun isAtBottom(): Boolean {
         val lm = binding.recyclerMessages.layoutManager as? LinearLayoutManager ?: return false
@@ -274,6 +292,13 @@ class ChatActivity : AppCompatActivity() {
                 binding.textToolPreview.visibility = View.VISIBLE
             }
             chips.addView(cb.root)
+        }
+
+        // 自动显示最新的工具调用 preview
+        val latest = flat.lastOrNull()
+        if (latest != null && latest.preview.isNotBlank()) {
+            binding.textToolPreview.text = latest.preview.take(200)
+            binding.textToolPreview.visibility = View.VISIBLE
         }
     }
 

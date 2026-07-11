@@ -285,10 +285,19 @@ class HermesApi {
 
     private fun parseToolProgress(data: String): ToolProgressEvent? = try {
         val o = JSONObject(data)
+        // 尝试从 name/tool/function 字段获取工具标识名，作为 title 的补充
+        val toolName = o.optString("name", o.optString("tool", o.optString("function", "")))
+        val rawTitle = o.optString("title", "")
+        val title = when {
+            rawTitle.isNotBlank() && toolName.isNotBlank() -> "$toolName · $rawTitle"
+            rawTitle.isNotBlank() -> rawTitle
+            toolName.isNotBlank() -> toolName
+            else -> "工具调用"
+        }
         ToolProgressEvent(
             id = o.optString("id", UUID.randomUUID().toString()),
             emoji = o.optString("emoji", "\uD83D\uDD27"),
-            title = o.optString("title", "工具调用"),
+            title = title,
             status = o.optString("status", "started"),
             preview = o.optString("preview", "")
         )

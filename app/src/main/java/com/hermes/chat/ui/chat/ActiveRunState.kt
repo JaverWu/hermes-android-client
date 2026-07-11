@@ -41,17 +41,62 @@ object ActiveRunState {
         _streamingAssistantId.value = null
     }
 
+    private var statusRotateIndex = 0
+
+    private val thinkingMsgs = listOf(
+        "(˘ω˘) 思考中…",
+        "(；￣Д￣) 嗯…让我想想…",
+        "(´・ω・`) 脑细胞运转中…",
+        "(◍•ᴗ•◍) 正在组织语言…",
+        "(ง •̀_•́)ง 努力思考中…",
+        "(°▽°) 正在分析你的问题…"
+    )
+
+    private val generatingMsgs = listOf(
+        "✧(≖ ◡ ≖✿) 正在生成回复…",
+        "(ﾉ◕ヮ◕)ﾉ*:・ﾟ✧ 打字中…",
+        "( ˘ ³˘)❤ 文字流淌中…",
+        "ヽ(✿ﾟ▽ﾟ)ノ 奋力码字中…"
+    )
+
+    private val toolMsgs = listOf(
+        "(ง •_•)ง 正在调用 {tool}…",
+        "🔧(・ω・) 使用 {tool} 中…",
+        "⚙️(◕ᗜ◕) {tool} 运行中…",
+        "(≧◡≦) {tool} 工作中…"
+    )
+
+    private val searchMsgs = listOf(
+        "🔍(◕ᗜ◕) 正在检索…",
+        "(￣ー￣) 搜索中…",
+        "(；•̀ω•́) 查找资料中…"
+    )
+
+    private val runMsgs = listOf(
+        "(づ￣ 3￣)づ 执行任务中…",
+        "🏃(ง •̀_•́)ง 奔跑中…",
+        "(•̀ᴗ•́)و 正在执行…"
+    )
+
+    private val defaultMsgs = listOf(
+        "(´・ω・`) 处理中…",
+        "(◡‿◡) 请稍等…",
+        "( ˘ω˘) 正在处理…"
+    )
+
     fun begin(assistantId: String) {
+        statusRotateIndex = 0
         _isStreaming.value = true
         _thinking.value = ""
-        _status.value = "Hermes 正在思考…"
+        _status.value = thinkingMsgs[0]
         _content.value = ""
         _toolCalls.value = emptyMap()
         _streamingAssistantId.value = assistantId
     }
 
     fun appendContent(delta: String) {
-        _status.value = "Hermes 正在生成…"
+        statusRotateIndex++
+        _status.value = generatingMsgs[statusRotateIndex % generatingMsgs.size]
         _content.value += delta
     }
 
@@ -70,14 +115,26 @@ object ActiveRunState {
     }
 
     fun setStatus(eventType: String) {
+        statusRotateIndex++
         _status.value = mapStatus(eventType)
     }
 
-    fun mapStatus(eventType: String): String = when {
-        eventType.contains("tool", ignoreCase = true) -> "Hermes 正在调用工具…"
-        eventType.contains("run", ignoreCase = true) -> "Hermes 正在执行任务…"
-        eventType.contains("search", ignoreCase = true) -> "Hermes 正在检索…"
-        eventType.contains("reasoning", ignoreCase = true) -> "Hermes 正在思考…"
-        else -> "Hermes 正在处理…"
+    /** 工具调用时设置状态，在文案中嵌入工具名 */
+    fun setToolStatus(toolTitle: String) {
+        statusRotateIndex++
+        val template = toolMsgs[statusRotateIndex % toolMsgs.size]
+        _status.value = template.replace("{tool}", toolTitle)
+    }
+
+    fun mapStatus(eventType: String): String {
+        statusRotateIndex++
+        val msgs = when {
+            eventType.contains("tool", ignoreCase = true) -> toolMsgs.map { it.replace("{tool}", "工具") }
+            eventType.contains("run", ignoreCase = true) -> runMsgs
+            eventType.contains("search", ignoreCase = true) -> searchMsgs
+            eventType.contains("reasoning", ignoreCase = true) -> thinkingMsgs
+            else -> defaultMsgs
+        }
+        return msgs[statusRotateIndex % msgs.size]
     }
 }

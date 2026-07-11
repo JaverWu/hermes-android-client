@@ -149,6 +149,8 @@ class RunWatcherService : Service() {
         }
         val onToolProgress: (ToolProgressEvent) -> Unit = { ev ->
             ActiveRunState.upsertTool(ToolCall(ev.id, ev.emoji, ev.title, ev.status, ev.preview, true))
+            ActiveRunState.setToolStatus(ev.title)
+            updateNotification(ActiveRunState.status.value)
             persistThrottled()
         }
 
