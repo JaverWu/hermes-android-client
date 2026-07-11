@@ -9,6 +9,7 @@ import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.hermes.chat.HermesApplication
@@ -65,6 +66,15 @@ class RunWatcherService : Service() {
     private var approvalHandled = false
     private var lastPersist = 0L
 
+    /**
+     * 后台/锁屏时保持 CPU 唤醒。前台 Service 只保活进程，锁屏/挂后台后 CPU 仍可能休眠，
+     * 导致 SSE 的 readUtf8Line 阻塞线程被挂起、数据到了也读不到。acquire 带 10 分钟超时兜底防泄漏。
+     */
+    private val wakeLock by lazy {
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Hermes:SSE")
+    }
+
     override fun onCreate() {
         super.onCreate()
         db = (application as HermesApplication).database
@@ -85,11 +95,17 @@ class RunWatcherService : Service() {
         assistantId = aid
         ActiveRunState.begin(aid)
         startForeground(NOTIF_ID, buildNotification("Hermes 正在处理…", ongoing = true))
+        // 保活 CPU：前台 Service 只保活进程，锁屏/挂后台后 CPU 仍可能休眠，
+        // 导致 SSE 的 readUtf8Line 阻塞线程被挂起、数据到了也读不到。
+        if (wakeLock.isHeld.not()) {
+            wakeLock.acquire(10 * 60 * 1000L) // 10 分钟超时保护，防止泄漏
+        }
         scope.launch { runTurn() }
         return START_NOT_STICKY
     }
 
     override fun onDestroy() {
+        try { if (wakeLock.isHeld) wakeLock.release() } catch (_: Exception) {}
         scope.cancel()
         super.onDestroy()
     }
@@ -486,6 +502,7 @@ class RunWatcherService : Service() {
     }
 
     private fun finishService() {
+        try { if (wakeLock.isHeld) wakeLock.release() } catch (_: Exception) {}
         stopForeground(Service.STOP_FOREGROUND_DETACH) // 保留通知（已替换为"回复了你"/错误）
         stopSelf()
     }

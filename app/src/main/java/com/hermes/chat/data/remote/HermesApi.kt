@@ -34,7 +34,7 @@ class HermesApi {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(0, TimeUnit.SECONDS) // 流式读取，不设置读超时
+        .readTimeout(120, TimeUnit.SECONDS) // 空闲 2 分钟视为死连接，触发 SocketTimeoutException → 重试
         .writeTimeout(30, TimeUnit.SECONDS)
         .callTimeout(300, TimeUnit.SECONDS) // 整轮调用 5 分钟封顶，防无限挂起
         .pingInterval(30, TimeUnit.SECONDS) // HTTP/2 保活 + 探测死连接
@@ -176,6 +176,7 @@ class HermesApi {
         val source = response.body!!.source()
         var eventType: String? = null
         var lineCount = 0
+        var dataEventCount = 0 // 实际收到的 data: 事件数，用于检测空流
         while (true) {
             val line = source.readUtf8Line() ?: break
             lineCount++
@@ -188,15 +189,21 @@ class HermesApi {
             if (line.startsWith("data:")) {
                 val data = line.substring(5).trim()
                 if (data == "[DONE]") {
-                    Log.d("HermesApi", "SSE received [DONE] after $lineCount lines")
+                    Log.d("HermesApi", "SSE received [DONE] after $lineCount lines, $dataEventCount data events")
                     return
                 }
+                dataEventCount++
                 if (lineCount <= 5) Log.d("HermesApi", "SSE line: $line")
                 onEvent(eventType, data)
                 eventType = null
             }
         }
-        Log.d("HermesApi", "SSE stream ended after $lineCount lines (readUtf8Line returned null)")
+        Log.d("HermesApi", "SSE stream ended after $lineCount lines, $dataEventCount data events (readUtf8Line returned null)")
+        // 空流检测：连接被关闭但没收到任何 data: 行，说明是异常断开而非正常结束。
+        // 抛出异常走 onError 路径触发重试，而不是被当成成功（onDone → finalizeTurn 删除占位消息）。
+        if (dataEventCount == 0) {
+            throw java.io.IOException("SSE stream ended without any data")
+        }
     }
 
     // ===================== 请求构造 =====================

@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <!-- Android 13+ 本地通知（"回复了你"提示） -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- WakeLock：切后台/锁屏时保持 CPU 唤醒，确保 SSE 流式回复能被及时读取 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Android 9+ 明文流量默认禁止，调试本地后端时可放开（仅 debug 生效） -->
     <application
         android:name=".HermesApplication"
