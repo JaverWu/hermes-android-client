@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -23,6 +24,50 @@
         android:layout_width="match_parent"
         android:layout_height="1px"
         android:background="@color/toolbar_border" />
+
+    <!-- 工具调用 / 进度状态条：常驻顶部，不进入对话列表，避免干扰阅读滚动 -->
+    <LinearLayout
+        android:id="@+id/layoutToolStrip"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/tool_strip_bg"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:paddingHorizontal="@dimen/space_xs"
+            android:paddingTop="@dimen/space_xs"
+            android:paddingBottom="@dimen/space_xs">
+
+            <LinearLayout
+                android:id="@+id/toolChips"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical" />
+        </HorizontalScrollView>
+
+        <TextView
+            android:id="@+id/textToolPreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="@dimen/space_sm"
+            android:layout_marginEnd="@dimen/space_sm"
+            android:layout_marginBottom="@dimen/space_xs"
+            android:paddingStart="@dimen/space_md"
+            android:paddingEnd="@dimen/space_md"
+            android:paddingTop="@dimen/space_sm"
+            android:paddingBottom="@dimen/space_sm"
+            android:background="@drawable/bg_tool_preview"
+            android:textSize="12sp"
+            android:lineSpacingExtra="2dp"
+            android:textColor="@color/tool_preview_text"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <FrameLayout
         android:layout_width="match_parent"

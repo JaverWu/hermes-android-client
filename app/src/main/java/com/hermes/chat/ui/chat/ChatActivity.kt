@@ -5,17 +5,21 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.LayoutInflater
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.hermes.chat.R
 import com.hermes.chat.data.local.MessageEntity
+import com.hermes.chat.data.model.ToolCall
 import com.hermes.chat.data.preferences.SettingsRepository
 import com.hermes.chat.databinding.ActivityChatBinding
+import com.hermes.chat.databinding.ItemToolChipBinding
 import com.hermes.chat.ui.common.AvatarPresets
 import com.hermes.chat.ui.common.AvatarRole
 import com.hermes.chat.ui.common.showAvatarPicker
@@ -113,11 +117,7 @@ class ChatActivity : AppCompatActivity() {
         }
         lifecycleScope.launch {
             viewModel.toolCalls.collect { map ->
-                adapter.setToolCalls(map)
-                adapter.notifyItemRangeChanged(0, adapter.itemCount)
-                if (adapter.itemCount > 0) {
-                    binding.recyclerMessages.scrollToPosition(adapter.itemCount - 1)
-                }
+                renderToolStrip(map)
             }
         }
         lifecycleScope.launch {
@@ -135,6 +135,38 @@ class ChatActivity : AppCompatActivity() {
         val on = viewModel.runMode.value
         item.isChecked = on
         item.title = if (on) getString(R.string.run_mode_on) else getString(R.string.run_mode_off)
+    }
+
+    /** 把工具调用 / 进度渲染到顶部 Hermes 状态条（不进入对话列表，不干扰滚动）。 */
+    private fun renderToolStrip(map: Map<String, List<ToolCall>>) {
+        val flat = map.values.flatten()
+        val strip = binding.layoutToolStrip
+        val chips = binding.toolChips
+        if (flat.isEmpty()) {
+            strip.visibility = View.GONE
+            binding.textToolPreview.visibility = View.GONE
+            return
+        }
+        strip.visibility = View.VISIBLE
+        chips.removeAllViews()
+        val inflater = LayoutInflater.from(this)
+        for (tc in flat) {
+            val cb = ItemToolChipBinding.inflate(inflater, chips, false)
+            cb.textEmoji.text = tc.emoji.ifBlank { "🛠" }
+            cb.textTitle.text = tc.title.ifBlank { getString(R.string.tool_calls_title) }
+            val dotColor = when (tc.status.lowercase(java.util.Locale.ROOT)) {
+                "completed" -> R.color.tool_chip_done
+                "error" -> R.color.tool_chip_error
+                else -> R.color.tool_chip_running
+            }
+            cb.statusDot.backgroundTintList =
+                android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, dotColor))
+            cb.root.setOnClickListener {
+                binding.textToolPreview.text = tc.preview.ifBlank { getString(R.string.tool_preview_empty) }
+                binding.textToolPreview.visibility = View.VISIBLE
+            }
+            chips.addView(cb.root)
+        }
     }
 
     /** 在对话界面中修改用户 / Hermes 头像 */

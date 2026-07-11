@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:background="@drawable/bg_tool_chip"
+    android:paddingStart="@dimen/space_sm"
+    android:paddingEnd="@dimen/space_sm"
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp"
+    android:layout_marginEnd="@dimen/space_xs">
+
+    <TextView
+        android:id="@+id/textEmoji"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="15sp"
+        android:includeFontPadding="false" />
+
+    <TextView
+        android:id="@+id/textTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/space_xs"
+        android:textSize="13sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:textColor="@color/tool_chip_title" />
+
+    <View
+        android:id="@+id/statusDot"
+        android:layout_width="7dp"
+        android:layout_height="7dp"
+        android:layout_marginStart="@dimen/space_xs"
+        android:background="@drawable/bg_circle_blue" />
+</LinearLayout>

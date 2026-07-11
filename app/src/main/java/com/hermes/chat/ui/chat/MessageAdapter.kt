@@ -12,13 +12,11 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.hermes.chat.R
 import com.hermes.chat.data.local.MessageEntity
-import com.hermes.chat.data.model.ToolCall
 import com.hermes.chat.data.preferences.SettingsRepository
 import com.hermes.chat.databinding.ItemMessageApprovalBinding
 import com.hermes.chat.databinding.ItemMessageAssistantBinding
 import com.hermes.chat.databinding.ItemMessageSystemBinding
 import com.hermes.chat.databinding.ItemMessageUserBinding
-import com.hermes.chat.databinding.ItemToolCallBinding
 import com.hermes.chat.ui.common.AvatarPresets
 import io.noties.markwon.Markwon
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
@@ -38,11 +36,9 @@ class MessageAdapter(
     private var streamingAssistantId: String? = null
     private var thinkingContent: String = ""
     private var statusText: String = ""
-    private var toolCallsMap: Map<String, List<ToolCall>> = emptyMap()
 
-    /** 折叠状态（按消息 id / 工具调用 id 记忆，避免重绑时跳变） */
+    /** 折叠状态（按消息 id 记忆，避免重绑时跳变） */
     private val reasoningExpanded = mutableSetOf<String>()
-    private val toolExpanded = mutableMapOf<String, Boolean>()
 
     fun setStreamingAssistantId(id: String?) {
         streamingAssistantId = id
@@ -51,10 +47,6 @@ class MessageAdapter(
     fun setStreamingState(thinking: String, status: String) {
         thinkingContent = thinking
         statusText = status
-    }
-
-    fun setToolCalls(map: Map<String, List<ToolCall>>) {
-        toolCallsMap = map
     }
 
     private fun getMarkwon(context: Context): Markwon {
@@ -109,10 +101,6 @@ class MessageAdapter(
                 // 推理折叠卡片（持久化后的 reasoning_content）
                 bindReasoning(holder, item)
 
-                // 工具调用卡片
-                val tools = if (isStreamingThis) toolCallsMap[item.id] ?: emptyList() else item.toolCalls()
-                bindToolCalls(holder, tools)
-
                 if (isStreamingThis && !hasContent) {
                     if (thinkingContent.isNotBlank()) {
                         holder.binding.layoutThinking.visibility = View.VISIBLE
@@ -165,43 +153,6 @@ class MessageAdapter(
             holder.binding.textReasoning.visibility = if (nowExpanded) View.VISIBLE else View.GONE
             holder.binding.imageReasoningChevron.rotation = if (nowExpanded) 90f else 0f
         }
-    }
-
-    private fun bindToolCalls(holder: AssistantVH, tools: List<ToolCall>) {
-        val container = holder.binding.layoutToolCalls
-        container.removeAllViews()
-        if (tools.isEmpty()) {
-            container.visibility = View.GONE
-            return
-        }
-        container.visibility = View.VISIBLE
-        val ctx = container.context
-        val inflater = LayoutInflater.from(ctx)
-        for (tc in tools) {
-            val tb = ItemToolCallBinding.inflate(inflater, container, false)
-            tb.textEmoji.text = tc.emoji.ifBlank { "🛠" }
-            tb.textTitle.text = tc.title.ifBlank { ctx.getString(R.string.tool_calls_title) }
-            tb.textStatus.text = statusLabel(ctx, tc.status)
-
-            val expanded = toolExpanded[tc.id] ?: tc.expanded
-            tb.textPreview.text = tc.preview.ifBlank { ctx.getString(R.string.tool_preview_empty) }
-            tb.textPreview.visibility = if (expanded) View.VISIBLE else View.GONE
-            tb.imageChevron.rotation = if (expanded) 90f else 0f
-
-            tb.layoutToolHeader.setOnClickListener {
-                val nowExpanded = !(toolExpanded[tc.id] ?: tc.expanded)
-                toolExpanded[tc.id] = nowExpanded
-                tb.textPreview.visibility = if (nowExpanded) View.VISIBLE else View.GONE
-                tb.imageChevron.rotation = if (nowExpanded) 90f else 0f
-            }
-            container.addView(tb.root)
-        }
-    }
-
-    private fun statusLabel(ctx: Context, status: String): String = when (status.lowercase(Locale.ROOT)) {
-        "completed" -> ctx.getString(R.string.tool_status_completed)
-        "error" -> ctx.getString(R.string.tool_status_error)
-        else -> ctx.getString(R.string.tool_status_started)
     }
 
     class UserVH(val binding: ItemMessageUserBinding) : RecyclerView.ViewHolder(binding.root)

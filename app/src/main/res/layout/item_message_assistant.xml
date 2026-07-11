@@ -93,14 +93,6 @@
                 android:visibility="gone" />
         </LinearLayout>
 
-        <!-- 工具调用卡片容器（动态填充 item_tool_call） -->
-        <LinearLayout
-            android:id="@+id/layoutToolCalls"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginBottom="@dimen/space_xs" />
-
         <!-- 思考流（流式期间、有思考内容时显示，TUI 风格实时展示） -->
         <LinearLayout
             android:id="@+id/layoutThinking"

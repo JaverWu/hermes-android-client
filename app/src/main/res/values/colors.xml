@@ -68,6 +68,19 @@
     <color name="reasoning_title">#8E8E93</color>
     <color name="reasoning_text">#48484A</color>
 
+    <!-- 顶部工具状态条（Hermes 标题栏下方，常驻、不干扰对话滚动） -->
+    <color name="tool_strip_bg">#F7F7FA</color>
+    <color name="tool_chip_bg">#FFFFFF</color>
+    <color name="tool_chip_border">#D1D1D6</color>
+    <color name="tool_chip_title">#000000</color>
+    <color name="tool_chip_sub">#8E8E93</color>
+    <color name="tool_chip_running">#FF9500</color>
+    <color name="tool_chip_done">#34C759</color>
+    <color name="tool_chip_error">#FF3B30</color>
+    <color name="tool_preview_bg">#FFFFFF</color>
+    <color name="tool_preview_border">#D1D1D6</color>
+    <color name="tool_preview_text">#48484A</color>
+
     <!-- 头像调色板（iOS 风，按名称 hash 选取） -->
     <color name="avatar_1">#007AFF</color>
     <color name="avatar_2">#34C759</color>
