@@ -84,4 +84,17 @@
     <color name="bubble_assistant_border">#2C2C2E</color>
     <color name="approval_text">#F0B050</color>
     <color name="system_text">#8E8E93</color>
+
+    <!-- 顶部工具状态条（深色） -->
+    <color name="tool_strip_bg">#1C1C1E</color>
+    <color name="tool_chip_bg">#2C2C2E</color>
+    <color name="tool_chip_border">#38383A</color>
+    <color name="tool_chip_title">#FFFFFF</color>
+    <color name="tool_chip_sub">#8E8E93</color>
+    <color name="tool_chip_running">#FF9F0A</color>
+    <color name="tool_chip_done">#30D158</color>
+    <color name="tool_chip_error">#FF453A</color>
+    <color name="tool_preview_bg">#2C2C2E</color>
+    <color name="tool_preview_border">#38383A</color>
+    <color name="tool_preview_text">#C7C7CC</color>
 </resources>
