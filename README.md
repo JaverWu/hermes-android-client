@@ -1,5 +1,7 @@
 # Hermes 对话（Android）
 
+纯AI开发，结合Hermes的channel提供的api server开放接口，可以连接hermes，从而提供更流畅、更简单的对话体验
+
 一个面向 **Android 10.0（API 29）及以上** 的客户端 App，用于和 Hermes 后端进行**流式对话**，
 并在 Hermes 给出操作选项（如 `/approve`、`/approve session`、`/deny`）时**一键点击确认**，
 同时用本地数据库**记录并恢复历史对话**。
