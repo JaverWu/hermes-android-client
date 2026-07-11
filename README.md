@@ -31,7 +31,7 @@
 
 首次进入后，打开右上角「设置」填写。设置页顶部提供**连接模式**选择，二选一：
 
-### 连接模式一：对话 API（推荐，App 内双向对话）
+### 连接模式：使用Hermes内部的API Server
 
 向 Hermes 的 OpenAI 兼容 SSE 接口流式请求，回复直接渲染在 App 内，支持审批一键确认与历史恢复。需填写：
 
@@ -44,29 +44,6 @@
 
 > 应用会向 `{BaseURL}/chat/completions` 发送请求。
 
-### 连接模式二：Webhook 触发（仅触发 Agent，回复走服务端渠道）
-
-作为**备用连接模式**，通过 `POST` 一个 JSON 负载到指定 Webhook 路由来触发 Hermes Agent 跑任务。
-此模式**回复不会回到 App 内**——服务端会按 `deliver` 配置把回复投递到 Telegram / 飞书 / 企微等外部渠道。
-
-需填写：
-
-| 字段 | 说明 | 示例 |
-| --- | --- | --- |
-| Webhook URL | 触发端点，形如 `POST {url}` | `https://your-hermes-host/webhooks/phone` |
-| Webhook 密钥 | 路由 secret（HMAC-SHA256）；可选 | `routing_secret` |
-
-Webhook 相关约定（参考 Nous Research Hermes Agent Webhook 适配器）：
-
-- **端点**：`POST http://<host>:8644/webhooks/<route>`
-- **鉴权**：默认 HMAC-SHA256，GitHub 风格头 `X-Hub-Signature-256: sha256=<hex>`，对**原始请求体**签名；
-  密钥为路由 secret（或全局 `WEBHOOK_SECRET`）。密钥留空或设为 `INSECURE_NO_AUTH` 则跳过签名校验。
-- **事件类型**：通过 `X-GitHub-Event` 头传递（App 固定为 `chat`）。
-- **请求体**：`{"event_type":"chat","role":"user","message":"<文本>","conversation_id":"<id>"}`。
-- **响应**：仅表示投递结果（`{"status":"delivered",...}`），**不含 Agent 回复**。
-  回复由服务端投递到外部渠道，因此 App 内只会显示「已触发」提示，不会显示 Agent 的回答。
-
-> 切换到 Webhook 模式后，在对话页发送消息即视为「触发 Agent」，App 内不创建空的回复气泡。
 
 ## 审批事件协议
 
