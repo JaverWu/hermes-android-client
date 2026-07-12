@@ -69,12 +69,14 @@ class AvatarView @JvmOverloads constructor(
         }
         addView(imageAvatar)
 
-        // ── TextView：文字层 ──
+        // ── TextView：文字层（默认隐藏，仅在 bindText 模式下可见） ──
         textAvatarLetter = TextView(context).apply {
             layoutParams = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)
             gravity = Gravity.CENTER
             setTextColor(android.graphics.Color.WHITE)
             includeFontPadding = false
+            text = ""
+            visibility = GONE
         }
         addView(textAvatarLetter)
 
@@ -136,6 +138,9 @@ class AvatarView @JvmOverloads constructor(
             imageAvatar.background = null
             imageAvatar.backgroundTintList = null
             imageAvatar.setImageBitmap(bitmap)
+            // 彻底隐藏文字层：清空文本 + GONE，防止 clipToOutline 在部分 OEM ROM 上不可靠
+            // 导致残留字形溢出到外部布局造成文字重叠
+            textAvatarLetter.text = ""
             textAvatarLetter.visibility = GONE
             true
         } else {
@@ -153,6 +158,8 @@ class AvatarView @JvmOverloads constructor(
         imageAvatar.background = null
         imageAvatar.backgroundTintList = null
         imageAvatar.setImageResource(drawableRes)
+        // 彻底隐藏文字层：清空文本 + GONE（同 bindImage 防护逻辑）
+        textAvatarLetter.text = ""
         textAvatarLetter.visibility = GONE
     }
 
