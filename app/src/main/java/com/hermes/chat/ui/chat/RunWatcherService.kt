@@ -62,7 +62,7 @@ class RunWatcherService : Service() {
     private val buffer = StringBuilder()
     private val reasoningBuffer = StringBuilder()
     private val logoBitmap by lazy {
-        BitmapFactory.decodeResource(resources, R.drawable.ic_logo_large)
+        BitmapFactory.decodeResource(resources, R.drawable.logo)
     }
     private var approvalHandled = false
     private var lastPersist = 0L
@@ -518,7 +518,7 @@ class RunWatcherService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(getString(R.string.app_name))
             .setContentText(text)
-            .setSmallIcon(R.drawable.ic_logo_large)
+            .setSmallIcon(R.drawable.logo)
             .setLargeIcon(logoBitmap)
             .setContentIntent(pi)
             .setOngoing(ongoing)
@@ -542,7 +542,7 @@ class RunWatcherService : Service() {
         val notif = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
             .setContentText(text)
-            .setSmallIcon(R.drawable.ic_logo_large)
+            .setSmallIcon(R.drawable.logo)
             .setLargeIcon(logoBitmap)
             .setContentIntent(pi)
             .setAutoCancel(true)
