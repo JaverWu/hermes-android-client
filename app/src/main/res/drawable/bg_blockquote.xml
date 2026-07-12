@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 思考过程 / 推理内容的 blockquote 引用样式：左侧竖线 + 圆角浅色背景 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 左侧强调竖线 -->
+    <item android:left="0dp" android:right="0dp" android:top="0dp" android:bottom="0dp">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/reasoning_bg" />
+            <corners android:radius="6dp" />
+        </shape>
+    </item>
+    <!-- 左侧竖线（通过 inset 实现，只占左边 3dp） -->
+    <item android:drawable="@color/tg_blue"
+          android:width="3dp"
+          android:gravity="start"
+          android:left="0dp" />
+</layer-list>

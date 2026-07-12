@@ -37,10 +37,17 @@ class SettingsRepository(context: Context) {
         get() = prefs.getInt(KEY_USER_AVATAR, 0)
         set(v) = prefs.edit().putInt(KEY_USER_AVATAR, v).apply()
 
-    /** Hermes 头像预设索引（见 [com.hermes.chat.ui.common.AvatarPresets.AI]） */
+    /** Hermes 头像预设索引（见 [com.hermes.chat.ui.common.AvatarPresets.AI]）。
+     *  注意：助手气泡头像已固定使用 R.drawable.logo，此字段仅保留兼容。 */
     var aiAvatarIndex: Int
         get() = prefs.getInt(KEY_AI_AVATAR, 0)
         set(v) = prefs.edit().putInt(KEY_AI_AVATAR, v).apply()
+
+    /** 用户自定义头像绝对路径（空字符串表示未设置，使用预设）。
+     *  路径指向 filesDir/avatars/user_avatar.jpg，非 Content URI。 */
+    var userAvatarUri: String
+        get() = prefs.getString(KEY_USER_AVATAR_URI, "") ?: ""
+        set(v) = prefs.edit().putString(KEY_USER_AVATAR_URI, v).apply()
 
     /** 长运行模式（/v1/runs）开关：Service 读取以决定走普通流式还是 runs 订阅。 */
     var runMode: Boolean
@@ -66,6 +73,23 @@ class SettingsRepository(context: Context) {
     fun isConfigured(): Boolean =
         baseUrl.isNotBlank() && apiKey.isNotBlank()
 
+    // ===== 长运行模式 run id 持久化（供 App 被杀后断线续传） =====
+    // run 在服务端执行，客户端仅订阅事件。被杀后重连同一 runId 即可续上，
+    // 因此必须把 runId 落盘（不能只存在内存）。
+    fun setRunId(assistantId: String, runId: String) =
+        prefs.edit().putString(KEY_RUN_ID + assistantId, runId).apply()
+
+    fun getRunId(assistantId: String): String? =
+        prefs.getString(KEY_RUN_ID + assistantId, null)
+
+    fun clearRunId(assistantId: String) =
+        prefs.edit().remove(KEY_RUN_ID + assistantId).apply()
+
+    /** 是否已向用户弹过"电池优化"提示（避免每次启动都打扰）。 */
+    var batteryPromptShown: Boolean
+        get() = prefs.getBoolean(KEY_BATTERY_PROMPT, false)
+        set(v) = prefs.edit().putBoolean(KEY_BATTERY_PROMPT, v).apply()
+
     companion object {
         const val DEFAULT_MODEL = "hermes-agent"
         private const val PREFS_NAME = "hermes_settings"
@@ -76,9 +100,12 @@ class SettingsRepository(context: Context) {
         private const val KEY_NIGHT_MODE = "night_mode"
         private const val KEY_USER_AVATAR = "user_avatar_index"
         private const val KEY_AI_AVATAR = "ai_avatar_index"
+        private const val KEY_USER_AVATAR_URI = "user_avatar_uri"
         private const val KEY_RUN_MODE = "run_mode"
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
         private const val KEY_DRAFT = "draft_"
+        private const val KEY_RUN_ID = "run_id_"
+        private const val KEY_BATTERY_PROMPT = "battery_prompt_shown"
 
         const val MODE_SYSTEM = "system"
         const val MODE_LIGHT = "light"

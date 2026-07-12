@@ -34,9 +34,13 @@ class HermesApi {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(120, TimeUnit.SECONDS) // 空闲 2 分钟视为死连接，触发 SocketTimeoutException → 重试
+        // 读超时设为 0 = 不设读超时、无限等待。长运行模式下服务端执行工具（读 config/注册表等文件）
+        // 可能长时间不吐任何字节，固定读超时（原 120s）会把"正在干活"的活连接误杀。
+        // 改由 pingInterval(30s) 探测"死 TCP 连接"：若对端无 pong 则 OkHttp 主动断开并走 onError 重试；
+        // 真正的卡死（服务端发了 running 后再无任何事件）由 RunWatcherService 的 150s 看门狗兜底。
+        .readTimeout(0, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
-        .callTimeout(300, TimeUnit.SECONDS) // 整轮调用 5 分钟封顶，防无限挂起
+        .callTimeout(300, TimeUnit.SECONDS) // 整轮调用 5 分钟封顶（终极兜底，正常由看门狗/ping 触发）
         .pingInterval(30, TimeUnit.SECONDS) // HTTP/2 保活 + 探测死连接
         .retryOnConnectionFailure(true)
         .build()
@@ -78,16 +82,20 @@ class HermesApi {
     ) = withContext(Dispatchers.IO) {
         try {
             val url = normalizeRunsUrl(baseUrl)
-            val request = buildRequest(url, apiKey, buildBody(model, messages))
+            // Hermes 的 /v1/runs 走 Responses API 规范，请求体用 input 字段（而非 chat/completions 的 messages）
+            val request = buildRequest(url, apiKey, buildRunBody(model, messages))
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
                 onError(java.io.IOException("HTTP ${response.code}: ${response.body?.string().orEmpty()}"))
                 return@withContext
             }
-            val json = JSONObject(response.body?.string().orEmpty())
-            val id = json.optString("id", "")
-            if (id.isBlank()) onError(java.io.IOException("Hermes 未返回 run id"))
-            else onRunId(id)
+            val bodyStr = response.body?.string().orEmpty()
+            val json = runCatching { JSONObject(bodyStr) }.getOrNull()
+            val id = json?.let { extractRunId(it) } ?: ""
+            if (id.isBlank()) {
+                Log.e("HermesApi", "createRun 未解析到 run id，原始响应体=$bodyStr")
+                onError(java.io.IOException("Hermes 未返回 run id（响应：${bodyStr.take(200)}）"))
+            } else onRunId(id)
         } catch (e: Exception) {
             onError(e)
         }
@@ -194,6 +202,8 @@ class HermesApi {
                 }
                 dataEventCount++
                 if (lineCount <= 5) Log.i("HermesApi", "SSE line: $line")
+                // 临时诊断：打印原始 data 事件（限前 40 条、每条截断 300 字符），用于确认长运行模式响应格式
+                if (dataEventCount <= 40) Log.i("HermesApi", "SSE data[$dataEventCount] evt=$eventType :: ${data.take(300)}")
                 onEvent(eventType, data)
                 eventType = null
             }
@@ -228,6 +238,22 @@ class HermesApi {
         }.toString()
     }
 
+    /**
+     * 长运行模式（/v1/runs）请求体：Hermes 的 run 接口遵循 OpenAI Responses API 规范，
+     * 用 `input` 字段承载对话历史（chat/completions 用的是 `messages`，两者不同）。
+     */
+    private fun buildRunBody(model: String, messages: List<ChatMessage>): String {
+        val arr = JSONArray()
+        messages.forEach { m ->
+            arr.put(JSONObject().put("role", m.role).put("content", m.content))
+        }
+        return JSONObject().apply {
+            put("model", model.ifBlank { "hermes-agent" })
+            put("stream", true)
+            put("input", arr)
+        }.toString()
+    }
+
     // ===================== URL 归一化 =====================
 
     private fun normalizeChatCompletionsUrl(raw: String): String {
@@ -256,6 +282,48 @@ class HermesApi {
     }
 
     // ===================== 字段解析 =====================
+
+    /**
+     * 从 /v1/runs 的响应体里尽可能稳健地提取 run id，返回第一个非空且不等于字面量 "null" 的字符串；都取不到返回 ""。
+     *
+     * 提取顺序与兜底原因：
+     * 1) 顶层 `id`：服务端最规范、最常见。但 Android 的 [org.json.JSONObject.optString]
+     *    对"非 String 类型"会**直接返回默认空串**（不会 toString）。这正是本次 bug 的根因——
+     *    若服务端把 id 返回为 Number 或别的对象，旧代码 `optString("id","")` 取到空便误报"未返回 run id"。
+     *    因此这里用 [org.json.JSONObject.opt] 取原始值：String 直接用，其它类型用 `toString()` 兜底，绝不因类型不是 String 而丢 id。
+     * 2) 顶层别名 `run_id` / `runId` / `response_id` / `task_id`：兼容不同版本/网关的命名习惯。
+     * 3) 嵌套对象 `data.id` / `run.id` / `response.id` / `data.run_id` / `run.run_id`：
+     *    部分实现把 id 包在 `data` / `run` / `response` 子对象里，用 [optJSONObject] 逐级取，全程空安全。
+     */
+    private fun extractRunId(json: JSONObject): String {
+        // 1) 顶层 "id"：String 直接用，其它类型 toString 兜底
+        json.opt("id")?.let { v ->
+            val s = if (v is String) v else v.toString()
+            if (s.isNotBlank() && s != "null") return s
+        }
+        // 2) 顶层常见别名（均为字符串键，同样做类型兜底）
+        for (key in listOf("run_id", "runId", "response_id", "task_id")) {
+            json.opt(key)?.let { v ->
+                val s = if (v is String) v else v.toString()
+                if (s.isNotBlank() && s != "null") return s
+            }
+        }
+        // 3) 嵌套对象：data.id / run.id / response.id
+        for (parent in listOf("data", "run", "response")) {
+            json.optJSONObject(parent)?.opt("id")?.let { v ->
+                val s = if (v is String) v else v.toString()
+                if (s.isNotBlank() && s != "null") return s
+            }
+        }
+        // 3) 嵌套对象：data.run_id / run.run_id
+        for (parent in listOf("data", "run")) {
+            json.optJSONObject(parent)?.opt("run_id")?.let { v ->
+                val s = if (v is String) v else v.toString()
+                if (s.isNotBlank() && s != "null") return s
+            }
+        }
+        return ""
+    }
 
     private fun parseContentDelta(data: String): String? {
         return try {

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  备份规则：只备份连接配置等 SharedPreferences（换机后免重填），
+  排除 Room 数据库文件。避免旧版本 DB 被云备份恢复到更高版本 APK 时
+  触发版本错位迁移导致崩溃。聊天记录是本地副本，丢了可重新对话。
+-->
+<full-backup-content>
+    <!-- 保留：连接配置 / 头像 / 草稿 等应用私有偏好 -->
+    <include domain="sharedpref" path="." />
+    <!-- 排除：Room 数据库（版本演进由 Migration 管理，不应被云备份覆盖） -->
+    <exclude domain="database" path="hermes_chat.db" />
+    <exclude domain="database" path="hermes_chat.db-shm" />
+    <exclude domain="database" path="hermes_chat.db-wal" />
+    <!-- 排除：自定义头像图片（私有文件目录，覆盖安装已保留） -->
+    <exclude domain="file" path="avatars/" />
+</full-backup-content>

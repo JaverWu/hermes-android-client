@@ -4,7 +4,6 @@ import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -21,6 +20,7 @@ import com.hermes.chat.ui.common.AvatarPresets
 import io.noties.markwon.Markwon
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
 import io.noties.markwon.ext.tables.TablePlugin
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -43,7 +43,14 @@ class MessageAdapter(
     private val reasoningExpanded = mutableSetOf<String>()
 
     fun setStreamingAssistantId(id: String?) {
+        val old = streamingAssistantId
         streamingAssistantId = id
+        if (old != id) {
+            val posOld = currentList.indexOfFirst { it.id == old }
+            if (posOld >= 0) notifyItemChanged(posOld)
+            val posNew = currentList.indexOfFirst { it.id == id }
+            if (posNew >= 0) notifyItemChanged(posNew)
+        }
     }
 
     fun setStreamingState(thinking: String, status: String) {
@@ -84,18 +91,14 @@ class MessageAdapter(
         holder.itemView.setOnLongClickListener { onMessageLongClick(item); true }
         when (holder) {
             is UserVH -> {
-                val user = AvatarPresets.user(settings.userAvatarIndex)
-                holder.binding.imageAvatar.backgroundTintList =
-                    android.content.res.ColorStateList.valueOf(ContextCompat.getColor(ctx, user.colorRes))
-                holder.binding.textAvatarLetter.text = user.glyph
+                // 用户头像：有自定义图片则 bindImage，否则 bindText 预设
+                bindUserAvatar(holder)
                 holder.binding.textMessage.text = item.content
                 holder.binding.textTime.text = formatTime(item.createdAt)
             }
             is AssistantVH -> {
-                val ai = AvatarPresets.ai(settings.aiAvatarIndex)
-                holder.binding.imageAvatar.backgroundTintList =
-                    android.content.res.ColorStateList.valueOf(ContextCompat.getColor(ctx, ai.colorRes))
-                holder.binding.textAvatarLetter.text = ai.glyph
+                // 助手头像：固定 R.drawable.logo
+                holder.binding.avatarView.bindLogo(R.drawable.logo)
 
                 val isStreamingThis = item.id == streamingAssistantId
                 val live = if (isStreamingThis) liveContent else item.content
@@ -145,6 +148,24 @@ class MessageAdapter(
             }
             is SystemVH -> holder.binding.textMessage.text = item.content
             is ApprovalVH -> holder.bind(item, onApprovalClick)
+        }
+    }
+
+    /**
+     * 绑定用户头像：有自定义图片路径且文件存在则 bindImage，
+     * 否则回退到 bindText 预设（读 userAvatarIndex）。
+     */
+    private fun bindUserAvatar(holder: UserVH) {
+        val uri = settings.userAvatarUri
+        if (uri.isNotBlank() && File(uri).exists()) {
+            val loaded = holder.binding.avatarView.bindImage(uri)
+            if (!loaded) {
+                val user = AvatarPresets.user(settings.userAvatarIndex)
+                holder.binding.avatarView.bindText(user.glyph, user.colorRes)
+            }
+        } else {
+            val user = AvatarPresets.user(settings.userAvatarIndex)
+            holder.binding.avatarView.bindText(user.glyph, user.colorRes)
         }
     }
 

@@ -31,4 +31,8 @@ interface MessageDao {
     /** 取某会话最后一条消息正文（用于会话列表预览，仅读取不改动结构）。 */
     @Query("SELECT content FROM messages WHERE conversationId = :conversationId ORDER BY createdAt DESC LIMIT 1")
     suspend fun getLastContent(conversationId: String): String?
+
+    /** 取所有"仍在流式输出中"的助手占位消息（App 被杀后用于断线续传 / 清理假卡死）。 */
+    @Query("SELECT * FROM messages WHERE role = 'assistant' AND isStreaming = 1")
+    suspend fun getStreamingAssistants(): List<MessageEntity>
 }
