@@ -95,6 +95,10 @@ class AvatarView @JvmOverloads constructor(
 
         // ── 圆形裁剪：裁剪所有子 View 到圆形区域 ──
         // 这是修复文字/emoji 溢出圆形的核心：FrameLayout 的 clipToOutline + 圆形 outline
+        // 同时启用 clipChildren 确保子 View 绝对不绘制到边界外（双重保险，
+        // 因为部分 OEM ROM 上 clipToOutline 对 TextView 子类裁剪不完全可靠）
+        clipChildren = true
+        clipToPadding = true
         outlineProvider = object : ViewOutlineProvider() {
             override fun getOutline(view: View, outline: Outline) {
                 outline.setOval(0, 0, view.width, view.height)
@@ -115,8 +119,30 @@ class AvatarView @JvmOverloads constructor(
         imageAvatar.setImageDrawable(null)
         imageAvatar.background = ContextCompat.getDrawable(context, R.drawable.bg_circle_blue)
         imageAvatar.backgroundTintList = ColorStateList.valueOf(color)
+        // 确保文字层存在且可见（之前 bindImage/bindLogo 可能已 removeView）
+        ensureTextLayer()
         textAvatarLetter.text = glyph
         textAvatarLetter.visibility = VISIBLE
+    }
+
+    /**
+     * 彻底隐藏文字层：从 View 树中 removeView。
+     * 比 GONE 更彻底——GONE 的 View 在部分 OEM ROM 上仍可能参与布局计算导致溢出重叠。
+     */
+    private fun hideTextLayer() {
+        if (textAvatarLetter.parent != null) {
+            removeView(textAvatarLetter)
+        }
+    }
+
+    /**
+     * 确保文字层存在于 View 树中（bindText 前调用）。
+     * 如果之前被 hideTextLayer() 移除则重新 addView。
+     */
+    private fun ensureTextLayer() {
+        if (textAvatarLetter.parent == null) {
+            addView(textAvatarLetter)
+        }
     }
 
     /**
@@ -138,10 +164,10 @@ class AvatarView @JvmOverloads constructor(
             imageAvatar.background = null
             imageAvatar.backgroundTintList = null
             imageAvatar.setImageBitmap(bitmap)
-            // 彻底隐藏文字层：清空文本 + GONE，防止 clipToOutline 在部分 OEM ROM 上不可靠
-            // 导致残留字形溢出到外部布局造成文字重叠
-            textAvatarLetter.text = ""
-            textAvatarLetter.visibility = GONE
+            // 彻底移除文字层：removeView 从 View 树中完全摘除（而非 GONE），
+            // 防止部分 OEM ROM 上 GONE 的 TextView 仍参与渲染/布局计算导致文字溢出重叠。
+            // 后续 bindText 时会重新 addView 回来。
+            hideTextLayer()
             true
         } else {
             false
@@ -158,9 +184,8 @@ class AvatarView @JvmOverloads constructor(
         imageAvatar.background = null
         imageAvatar.backgroundTintList = null
         imageAvatar.setImageResource(drawableRes)
-        // 彻底隐藏文字层：清空文本 + GONE（同 bindImage 防护逻辑）
-        textAvatarLetter.text = ""
-        textAvatarLetter.visibility = GONE
+        // 彻底移除文字层（同 bindImage 防护逻辑）
+        hideTextLayer()
     }
 
     /**
