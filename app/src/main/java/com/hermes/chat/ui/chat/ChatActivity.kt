@@ -47,6 +47,9 @@ class ChatActivity : AppCompatActivity() {
     /** 插入斜杠命令时抑制 TextWatcher 的面板检测，避免插入后面板闪现。 */
     private var suppressSlash = false
 
+    /** 发送消息后强制滚动到底部（即使发送前用户在上方浏览历史）。 */
+    private var pendingScrollToBottom = false
+
     /** 文件选择器（点击曲别针按钮触发）。 */
     private val filePickerLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -166,8 +169,14 @@ class ChatActivity : AppCompatActivity() {
                 adapter.liveContent = viewModel.liveContent.value
                 val wasAtBottom = isAtBottom()
                 adapter.submitList(list) {
-                    if (list.isNotEmpty() && wasAtBottom) {
-                        binding.recyclerMessages.scrollToPosition(list.lastIndex)
+                    if (list.isNotEmpty() && (wasAtBottom || pendingScrollToBottom)) {
+                        // 用户主动发送：平滑滚到底部；其余情况（已在底部跟随时）瞬时定位
+                        if (pendingScrollToBottom) {
+                            binding.recyclerMessages.smoothScrollToPosition(list.lastIndex)
+                        } else {
+                            binding.recyclerMessages.scrollToPosition(list.lastIndex)
+                        }
+                        pendingScrollToBottom = false
                     }
                 }
                 binding.textEmptyChat.visibility =
@@ -370,6 +379,8 @@ class ChatActivity : AppCompatActivity() {
             return
         }
         binding.editInput.text?.clear()
+        // 用户主动发送：无论当前是否浏览历史，发送后都回到最新消息底部
+        pendingScrollToBottom = true
         viewModel.sendUserMessage(text)
     }
 
