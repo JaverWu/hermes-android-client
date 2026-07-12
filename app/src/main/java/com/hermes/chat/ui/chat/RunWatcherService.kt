@@ -32,6 +32,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.UUID
@@ -67,6 +68,15 @@ class RunWatcherService : Service() {
     private var approvalHandled = false
     private var lastPersist = 0L
 
+    /** 看门狗：最后一次收到流式活动的时刻；用于检测 SSE 假死（服务端发了 running 后再无事件）。 */
+    @Volatile private var lastActivityTs = 0L
+    /** 标记本轮是否已经结算（finalize/error/approval），保证幂等，避免看门狗与正常完成重复收尾。 */
+    private var finalized = false
+    /** 卡死看门狗协程句柄，每轮对话启动一个，结算时取消。 */
+    private var stallJob: Job? = null
+    /** 无活动多久判定为卡死（150s，略大于 SSE readTimeout 的 120s，避免误杀正常心跳）。 */
+    private val STALL_TIMEOUT_MS = 150_000L
+
     /**
      * 后台/锁屏时保持 CPU 唤醒。前台 Service 只保活进程，锁屏/挂后台后 CPU 仍可能休眠，
      * 导致 SSE 的 readUtf8Line 阻塞线程被挂起、数据到了也读不到。acquire 带 10 分钟超时兜底防泄漏。
@@ -95,6 +105,8 @@ class RunWatcherService : Service() {
         conversationId = cid
         assistantId = aid
         ActiveRunState.begin(aid)
+        finalized = false
+        lastActivityTs = System.currentTimeMillis()
         startForeground(NOTIF_ID, buildNotification("Hermes 正在处理…", ongoing = true))
         // 保活 CPU：前台 Service 只保活进程，锁屏/挂后台后 CPU 仍可能休眠，
         // 导致 SSE 的 readUtf8Line 阻塞线程被挂起、数据到了也读不到。
@@ -134,20 +146,26 @@ class RunWatcherService : Service() {
         }
 
         // 流式回调：写入缓冲 + ActiveRunState + 节流落库（每轮复用同一组回调）
+        // 每次收到任意事件都刷新 lastActivityTs，供看门狗判断是否卡死。
+        fun touch() { lastActivityTs = System.currentTimeMillis() }
         val onDelta: (String) -> Unit = {
+            touch()
             buffer.append(it)
             ActiveRunState.appendContent(it)
             persistThrottled()
         }
         val onThinking: (String) -> Unit = {
+            touch()
             reasoningBuffer.append(it)
             ActiveRunState.appendThinking(it)
         }
         val onStatus: (String, String) -> Unit = { et, _ ->
+            touch()
             ActiveRunState.setStatus(et)
             updateNotification(ActiveRunState.status.value)
         }
         val onToolProgress: (ToolProgressEvent) -> Unit = { ev ->
+            touch()
             ActiveRunState.upsertTool(ToolCall(ev.id, ev.emoji, ev.title, ev.status, ev.preview, true))
             ActiveRunState.setToolStatus(ev.title)
             updateNotification(ActiveRunState.status.value)
@@ -155,6 +173,25 @@ class RunWatcherService : Service() {
         }
 
         var attempt = 0
+
+        // 卡死看门狗：若服务端发了 running 等事件后再无后续（无完成事件、无 [DONE]），
+        // SSE 连接会因心跳注释一直活着，readUtf8Line 永久阻塞 → isStreaming 卡死。
+        // 这里每 15s 检查一次"距上次活动是否超过 STALL_TIMEOUT_MS"，超时则强制收尾。
+        stallJob?.cancel()
+        stallJob = scope.launch {
+            while (isActive) {
+                delay(15_000)
+                if (finalized) break
+                val last = lastActivityTs
+                if (last == 0L) continue
+                if (ActiveRunState.isStreaming.value &&
+                    System.currentTimeMillis() - last > STALL_TIMEOUT_MS) {
+                    Log.w("RunWatcher", "STALL: no activity ${System.currentTimeMillis() - last}ms, force finalize")
+                    forceFinalize()
+                    break
+                }
+            }
+        }
 
         while (attempt <= MAX_RETRIES) {
             attempt++
@@ -258,6 +295,8 @@ class RunWatcherService : Service() {
         approvalHandled = false
         ActiveRunState.reset()
         ActiveRunState.begin(assistantId!!)
+        finalized = false
+        lastActivityTs = System.currentTimeMillis()
     }
 
     /** 判断是否为可重试的瞬时网络错误（切后台 / 网络切换 / 心跳超时等）。 */
@@ -329,11 +368,34 @@ class RunWatcherService : Service() {
 
     // ===================== 结束 / 异常 =====================
 
+    /**
+     * 看门狗触发：SSE 卡死（服务端发了 running 后再无完成事件/[DONE]）时，
+     * 用部分内容强制收尾，避免 isStreaming 永远为 true 卡死整个对话流程。
+     */
+    private fun forceFinalize() {
+        Log.w("RunWatcher", "forceFinalize: stall timeout, finalizing turn with partial warning")
+        finalizeTurn(partialWarning = true)
+    }
+
+    /** 把仍停留在 running/started 的工具归一为 completed，避免落库后一直显示"进行中"。 */
+    private fun currentToolJsonNormalized(id: String?): String {
+        if (id == null) return ""
+        val list = ActiveRunState.toolCalls.value[id] ?: return ""
+        val normalized = list.map { tc ->
+            if (tc.status.equals("running", true) || tc.status.equals("started", true))
+                tc.copy(status = "completed") else tc
+        }
+        return normalized.toJsonString()
+    }
+
     private fun finalizeTurn(partialWarning: Boolean = false) {
+        if (finalized) { Log.w("RunWatcher", "finalizeTurn already done, skip"); return }
+        finalized = true
+        stallJob?.cancel("finalized")
         val id = assistantId ?: return finishService()
         val bufferContent = buffer.toString()
         val reasoning = reasoningBuffer.toString()
-        val toolJson = ActiveRunState.toolCalls.value[id]?.toJsonString() ?: ""
+        val toolJson = currentToolJsonNormalized(id)
         Log.i("RunWatcher", "finalizeTurn: buffer=${bufferContent.length} chars, reasoning=${reasoning.length} chars, tools=${toolJson.length} chars, partial=$partialWarning")
 
         // 用 runBlocking 确保 DB 写入完成后再 finishService，避免 scope.cancel 取消写入
@@ -392,20 +454,23 @@ class RunWatcherService : Service() {
         } else {
             bufferContent.take(120).ifBlank { "点击查看完整回复" }
         }
-        if (!isAppInForeground()) {
-            notifyDone(notifTitle, notifText)
+        if (isAppInForeground()) {
+            cancelNotification() // 前台：用户已看到 UI，移除陈旧的进行中通知
         } else {
-            Log.i("RunWatcher", "App is in foreground, skipping completion notification")
+            notifyDone(notifTitle, notifText)
         }
         finishService()
     }
 
     private fun handleApproval(req: ApprovalRequest) {
+        if (finalized) { Log.w("RunWatcher", "handleApproval already done, skip"); return }
+        finalized = true
+        stallJob?.cancel("finalized")
         approvalHandled = true
         val id = assistantId ?: return
         val bufferContent = buffer.toString()
         val reasoning = reasoningBuffer.toString()
-        val toolJson = ActiveRunState.toolCalls.value[id]?.toJsonString() ?: ""
+        val toolJson = currentToolJsonNormalized(id)
         Log.i("RunWatcher", "handleApproval: title=${req.title}")
         runBlocking {
             val row = db.messageDao().getById(id)
@@ -437,15 +502,19 @@ class RunWatcherService : Service() {
             )
         }
         ActiveRunState.reset()
+        cancelNotification() // 审批 UI 在聊天内展示，移除进行中通知即可
         finishService()
     }
 
     private fun handleError(e: Throwable) {
+        if (finalized) { Log.w("RunWatcher", "handleError already done, skip"); return }
+        finalized = true
+        stallJob?.cancel("finalized")
         Log.e("RunWatcher", "handleError: ${e.javaClass.simpleName}: ${e.message}")
         val id = assistantId
         val bufferContent = buffer.toString()
         val reasoning = reasoningBuffer.toString()
-        val toolJson = if (id != null) ActiveRunState.toolCalls.value[id]?.toJsonString() ?: "" else ""
+        val toolJson = currentToolJsonNormalized(id)
 
         runBlocking {
             if (id != null) {
@@ -479,10 +548,10 @@ class RunWatcherService : Service() {
             )
         }
         ActiveRunState.reset()
-        if (!isAppInForeground()) {
-            notifyDone("Hermes 请求出错", e.message ?: e.javaClass.simpleName)
+        if (isAppInForeground()) {
+            cancelNotification()
         } else {
-            Log.i("RunWatcher", "App is in foreground, skipping error notification")
+            notifyDone("Hermes 请求出错", e.message ?: e.javaClass.simpleName)
         }
         finishService()
     }
@@ -552,6 +621,12 @@ class RunWatcherService : Service() {
             .build()
         val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         mgr.notify(NOTIF_ID, notif)
+    }
+
+    /** 主动移除进行中的通知（前台聊天时，UI 已展示最终内容，无需在通知栏保留陈旧提示）。 */
+    private fun cancelNotification() {
+        val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        mgr.cancel(NOTIF_ID)
     }
 
     private fun postSystemMessage(text: String) {

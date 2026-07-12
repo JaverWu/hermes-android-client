@@ -25,6 +25,61 @@
         android:layout_height="1px"
         android:background="@color/toolbar_border" />
 
+    <!-- 连接/调试信息：默认隐藏，点击顶部 info 按钮展开 -->
+    <LinearLayout
+        android:id="@+id/layoutDebugPanel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@color/tool_strip_bg"
+        android:paddingStart="@dimen/space_lg"
+        android:paddingEnd="@dimen/space_lg"
+        android:paddingTop="@dimen/space_md"
+        android:paddingBottom="@dimen/space_md"
+        android:visibility="gone"
+        tools:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/debug_title"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:textColor="@color/text_primary" />
+
+        <TextView
+            android:id="@+id/textDebugBaseUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_sm"
+            android:textSize="13sp"
+            android:textColor="@color/text_secondary" />
+
+        <TextView
+            android:id="@+id/textDebugModel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_xs"
+            android:textSize="13sp"
+            android:textColor="@color/text_secondary" />
+
+        <TextView
+            android:id="@+id/textDebugApiKey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_xs"
+            android:textSize="13sp"
+            android:textColor="@color/text_secondary" />
+
+        <TextView
+            android:id="@+id/textDebugStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_xs"
+            android:textSize="13sp"
+            android:textColor="@color/text_secondary" />
+    </LinearLayout>
+
     <!-- 工具调用 / 进度状态条：常驻顶部，不进入对话列表，避免干扰阅读滚动 -->
     <LinearLayout
         android:id="@+id/layoutToolStrip"
@@ -94,6 +149,18 @@
             android:text="@string/empty_chat"
             android:textColor="@color/text_secondary"
             android:textSize="16sp"
+            android:visibility="gone" />
+
+        <ImageButton
+            android:id="@+id/fabScrollBottom"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="@dimen/space_md"
+            android:background="@drawable/bg_circle_gray"
+            android:contentDescription="@string/action_scroll_bottom"
+            android:src="@drawable/ic_chevron_down"
+            app:tint="@color/white"
             android:visibility="gone" />
     </FrameLayout>
 

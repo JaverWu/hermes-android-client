@@ -43,7 +43,14 @@ class MessageAdapter(
     private val reasoningExpanded = mutableSetOf<String>()
 
     fun setStreamingAssistantId(id: String?) {
+        val old = streamingAssistantId
         streamingAssistantId = id
+        if (old != id) {
+            val posOld = currentList.indexOfFirst { it.id == old }
+            if (posOld >= 0) notifyItemChanged(posOld)
+            val posNew = currentList.indexOfFirst { it.id == id }
+            if (posNew >= 0) notifyItemChanged(posNew)
+        }
     }
 
     fun setStreamingState(thinking: String, status: String) {

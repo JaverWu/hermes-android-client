@@ -12,6 +12,7 @@
     <string name="action_send">发送</string>
     <string name="action_attach">附件</string>
     <string name="action_edit_avatar">编辑头像</string>
+    <string name="action_scroll_bottom">回到底部</string>
 
     <string name="hint_input">输入消息…</string>
     <string name="hint_message">消息</string>
@@ -103,4 +104,17 @@
     <!-- 后台运行通知 -->
     <string name="notification_channel_name">Hermes 运行通知</string>
     <string name="notification_channel_desc">对话回复完成等后台运行通知</string>
+
+    <!-- 连接 / 调试信息面板 -->
+    <string name="action_debug">连接信息</string>
+    <string name="debug_title">连接与调试</string>
+    <string name="debug_base_url">服务器地址</string>
+    <string name="debug_model">模型</string>
+    <string name="debug_api_key">API Key</string>
+    <string name="debug_status">连接状态</string>
+    <string name="debug_status_checking">检测中…</string>
+    <string name="debug_status_connected">已连接</string>
+    <string name="debug_status_unconfigured">请先在设置中配置连接</string>
+    <string name="debug_status_http_error">无法连接（HTTP %1$d）</string>
+    <string name="debug_status_exception">无法连接：%1$s</string>
 </resources>

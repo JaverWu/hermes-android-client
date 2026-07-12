@@ -11,6 +11,11 @@
         android:title="@string/action_new_chat"
         app:showAsAction="never" />
     <item
+        android:id="@+id/action_debug"
+        android:icon="@drawable/ic_info"
+        android:title="@string/action_debug"
+        app:showAsAction="always" />
+    <item
         android:id="@+id/action_settings"
         android:icon="@drawable/ic_settings"
         android:title="@string/action_settings"

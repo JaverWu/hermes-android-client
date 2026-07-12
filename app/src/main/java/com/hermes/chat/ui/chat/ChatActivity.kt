@@ -35,7 +35,9 @@ import com.hermes.chat.ui.common.copyAvatarToInternal
 import com.hermes.chat.ui.common.showAvatarPicker
 import com.hermes.chat.ui.common.showAvatarRoleChooser
 import com.hermes.chat.ui.settings.SettingsActivity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ChatActivity : AppCompatActivity() {
 
@@ -49,6 +51,9 @@ class ChatActivity : AppCompatActivity() {
 
     /** 发送消息后强制滚动到底部（即使发送前用户在上方浏览历史）。 */
     private var pendingScrollToBottom = false
+
+    /** 连接/调试信息面板是否展开。 */
+    private var debugPanelOpen = false
 
     /** 文件选择器（点击曲别针按钮触发）。 */
     private val filePickerLauncher =
@@ -107,6 +112,7 @@ class ChatActivity : AppCompatActivity() {
                     startActivity(Intent(this, SettingsActivity::class.java)); true
                 }
                 R.id.action_edit_avatar -> { openAvatarEditor(); true }
+                R.id.action_debug -> { toggleDebugPanel(); true }
                 R.id.action_run_mode -> {
                     viewModel.toggleRunMode()
                     updateRunModeMenuItem()
@@ -124,6 +130,20 @@ class ChatActivity : AppCompatActivity() {
         )
         binding.recyclerMessages.layoutManager = LinearLayoutManager(this)
         binding.recyclerMessages.adapter = adapter
+
+        // 回到底部悬浮按钮：点击平滑滚动到最后一条，随后隐藏
+        binding.fabScrollBottom.setOnClickListener {
+            if (adapter.itemCount > 0) {
+                binding.recyclerMessages.smoothScrollToPosition(adapter.itemCount - 1)
+            }
+            binding.fabScrollBottom.visibility = View.GONE
+        }
+        // 滚动时同步按钮显隐：离开底部则显示，回到底部则隐藏
+        binding.recyclerMessages.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                updateScrollBottomFab()
+            }
+        })
 
         // ── 内联斜杠命令弹板 ──
         slashAdapter = SlashInlineAdapter(SlashCommands.all) { cmd ->
@@ -179,6 +199,8 @@ class ChatActivity : AppCompatActivity() {
                         pendingScrollToBottom = false
                     }
                 }
+                // 新消息到达后同步按钮状态：在底部则隐藏，不在底部则显示
+                updateScrollBottomFab()
                 binding.textEmptyChat.visibility =
                     if (list.isEmpty()) View.VISIBLE else View.GONE
             }
@@ -260,11 +282,17 @@ class ChatActivity : AppCompatActivity() {
         return super.dispatchKeyEvent(event)
     }
 
-    /** 检查用户是否在列表底部附近（用于判断是否需要自动滚动） */
+    /** 检查用户是否在列表底部（用于判断回到底部按钮的显隐） */
     private fun isAtBottom(): Boolean {
         val lm = binding.recyclerMessages.layoutManager as? LinearLayoutManager ?: return false
-        val lastVisible = lm.findLastCompletelyVisibleItemPosition()
-        return lastVisible >= adapter.itemCount - 2
+        val lastVisible = lm.findLastVisibleItemPosition()
+        return lastVisible >= adapter.itemCount - 1
+    }
+
+    /** 根据当前滚动位置同步「回到底部」按钮的显隐 */
+    private fun updateScrollBottomFab() {
+        val show = adapter.itemCount > 0 && !isAtBottom()
+        binding.fabScrollBottom.visibility = if (show) View.VISIBLE else View.GONE
     }
 
     /** 滚动到最后一条（仅在用户已在底部时才滚） */
@@ -286,6 +314,80 @@ class ChatActivity : AppCompatActivity() {
         val on = viewModel.runMode.value
         item.isChecked = on
         item.title = if (on) getString(R.string.run_mode_on) else getString(R.string.run_mode_off)
+    }
+
+    /** 展开 / 收起顶部连接调试信息面板。 */
+    private fun toggleDebugPanel() {
+        debugPanelOpen = !debugPanelOpen
+        binding.layoutDebugPanel.visibility =
+            if (debugPanelOpen) View.VISIBLE else View.GONE
+        if (debugPanelOpen) refreshDebugPanel()
+    }
+
+    /** 刷新面板内容：展示连接配置并实时探测一次连通性。 */
+    private fun refreshDebugPanel() {
+        val url = settings.baseUrl
+        val key = settings.apiKey
+        binding.textDebugBaseUrl.text =
+            getString(R.string.debug_base_url) + "：" + (if (url.isBlank()) "（未设置）" else url)
+        binding.textDebugModel.text =
+            getString(R.string.debug_model) + "：" + settings.model
+        binding.textDebugApiKey.text =
+            getString(R.string.debug_api_key) + "：" + maskKey(key)
+        binding.textDebugStatus.text =
+            getString(R.string.debug_status) + "：" + getString(R.string.debug_status_checking)
+        if (url.isBlank() || key.isBlank()) {
+            binding.textDebugStatus.text =
+                getString(R.string.debug_status) + "：" + getString(R.string.debug_status_unconfigured)
+            binding.textDebugStatus.setTextColor(
+                ContextCompat.getColor(this, R.color.text_tertiary)
+            )
+            return
+        }
+        // 简易连通性检测（主线程外执行，避免阻塞 UI）
+        lifecycleScope.launch(Dispatchers.IO) {
+            val result = runCatching {
+                val client = okhttp3.OkHttpClient.Builder()
+                    .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+                val req = okhttp3.Request.Builder()
+                    .url(url.trimEnd('/') + "/v1/models")
+                    .header("Authorization", "Bearer $key")
+                    .build()
+                client.newCall(req).execute().use { resp -> resp.code }
+            }
+            val (text, colorRes) = when {
+                result.isFailure -> {
+                    val msg = result.exceptionOrNull()?.message ?: "未知错误"
+                    getString(R.string.debug_status_exception, msg.take(60)) to R.color.tool_chip_error
+                }
+                result.getOrDefault(-1) in 200..299 -> {
+                    getString(R.string.debug_status_connected) to R.color.tool_chip_done
+                }
+                else -> {
+                    getString(R.string.debug_status_http_error, result.getOrDefault(-1)) to R.color.tool_chip_error
+                }
+            }
+            withContext(Dispatchers.Main) {
+                binding.textDebugStatus.text = getString(R.string.debug_status) + "：" + text
+                binding.textDebugStatus.setTextColor(
+                    ContextCompat.getColor(this@ChatActivity, colorRes)
+                )
+            }
+        }
+    }
+
+    /** 对 API Key 做掩码：长度 > 6 时保留前 3 后 3，中间用 • 填充；否则首尾各 1 字符。 */
+    private fun maskKey(key: String): String {
+        if (key.length <= 6) {
+            return if (key.length <= 2) {
+                key
+            } else {
+                key.first() + "•".repeat(key.length - 2) + key.last()
+            }
+        }
+        return key.take(3) + "•".repeat(5) + key.takeLast(3)
     }
 
     /** 把工具调用 / 进度渲染到顶部 Hermes 状态条（不进入对话列表，不干扰滚动）。 */
