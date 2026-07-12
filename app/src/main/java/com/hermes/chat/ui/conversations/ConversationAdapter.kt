@@ -22,7 +22,6 @@ import java.util.Locale
 
 class ConversationAdapter(
     private val onClick: (ConversationEntity) -> Unit,
-    private val onDelete: (ConversationEntity) -> Unit,
     private val messageDao: MessageDao
 ) : ListAdapter<ConversationEntity, ConversationAdapter.VH>(DIFF) {
 
@@ -70,7 +69,6 @@ class ConversationAdapter(
         }
 
         holder.binding.cardConversation.setOnClickListener { onClick(item) }
-        holder.binding.buttonDelete.setOnClickListener { onDelete(item) }
     }
 
     class VH(val binding: ItemConversationBinding) : RecyclerView.ViewHolder(binding.root)

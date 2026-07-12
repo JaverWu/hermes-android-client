@@ -11,11 +11,16 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/tg_blue"
+        style="@style/Theme.HermesChat.Toolbar"
         app:title="@string/title_settings"
-        app:titleTextColor="@color/text_on_blue"
-        app:navigationIcon="?attr/homeAsUpIndicator"
-        app:navigationIconTint="@color/text_on_blue" />
+        app:titleCentered="true"
+        app:titleTextAppearance="@style/TextAppearance.Hermes.Title"
+        app:navigationIcon="@drawable/ic_chevron_left" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="@color/toolbar_border" />
 
     <ScrollView
         android:layout_width="match_parent"
@@ -25,17 +30,17 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingStart="@dimen/space_lg"
+            android:paddingEnd="@dimen/space_lg"
+            android:paddingTop="@dimen/space_lg"
+            android:paddingBottom="@dimen/space_xl">
 
             <!-- 顶部资料区 -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp"
-                app:strokeWidth="0dp"
-                app:contentPadding="16dp">
+                style="@style/HermesCard"
+                app:contentPadding="@dimen/space_lg">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -44,13 +49,14 @@
                     android:gravity="center_vertical">
 
                     <FrameLayout
-                        android:layout_width="64dp"
-                        android:layout_height="64dp">
+                        android:layout_width="56dp"
+                        android:layout_height="56dp">
 
                         <ImageView
-                            android:layout_width="64dp"
-                            android:layout_height="64dp"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
                             android:background="@drawable/bg_circle_blue"
+                            android:backgroundTint="@color/tg_blue"
                             android:scaleType="centerInside" />
 
                         <TextView
@@ -59,7 +65,7 @@
                             android:gravity="center"
                             android:text="H"
                             android:textColor="@color/white"
-                            android:textSize="26sp"
+                            android:textSize="24sp"
                             android:textStyle="bold" />
                     </FrameLayout>
 
@@ -67,7 +73,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:layout_marginStart="16dp"
+                        android:layout_marginStart="@dimen/space_md"
                         android:orientation="vertical">
 
                         <TextView
@@ -91,21 +97,170 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- 卡片：头像 -->
+            <TextView
+                style="@style/SectionLabel"
+                android:layout_marginTop="@dimen/space_xl"
+                android:layout_marginBottom="@dimen/space_xs"
+                android:text="@string/section_avatar" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/HermesCard"
+                app:contentPadding="0dp">
+
+                <!-- 我的头像 -->
+                <LinearLayout
+                    android:id="@+id/layoutUserAvatar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="@dimen/space_lg"
+                    android:paddingTop="@dimen/space_md"
+                    android:paddingEnd="@dimen/space_lg"
+                    android:paddingBottom="@dimen/space_md"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <FrameLayout
+                        android:layout_width="44dp"
+                        android:layout_height="44dp">
+
+                        <ImageView
+                            android:id="@+id/imageUserAvatar"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_circle_blue"
+                            android:scaleType="centerInside" />
+
+                        <TextView
+                            android:id="@+id/textUserAvatarLetter"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="center"
+                            android:textColor="@color/white"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="@dimen/space_md"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/avatar_user"
+                            android:textSize="16sp"
+                            android:textColor="@color/text_primary" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/avatar_change"
+                            android:textSize="13sp"
+                            android:textColor="@color/text_secondary" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="@color/text_tertiary" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1px"
+                    android:layout_marginStart="@dimen/space_lg"
+                    android:background="@color/divider" />
+
+                <!-- Hermes 头像 -->
+                <LinearLayout
+                    android:id="@+id/layoutAiAvatar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="@dimen/space_lg"
+                    android:paddingTop="@dimen/space_md"
+                    android:paddingEnd="@dimen/space_lg"
+                    android:paddingBottom="@dimen/space_md"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <FrameLayout
+                        android:layout_width="44dp"
+                        android:layout_height="44dp">
+
+                        <ImageView
+                            android:id="@+id/imageAiAvatar"
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:background="@drawable/bg_circle_blue"
+                            android:scaleType="centerInside" />
+
+                        <TextView
+                            android:id="@+id/textAiAvatarLetter"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:gravity="center"
+                            android:textColor="@color/white"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="@dimen/space_md"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/avatar_ai"
+                            android:textSize="16sp"
+                            android:textColor="@color/text_primary" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="@string/avatar_change"
+                            android:textSize="13sp"
+                            android:textColor="@color/text_secondary" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="@color/text_tertiary" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
             <!-- 卡片1：连接设置 -->
             <TextView
                 style="@style/SectionLabel"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="@dimen/space_xl"
+                android:layout_marginBottom="@dimen/space_xs"
                 android:text="@string/section_connection" />
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp"
-                app:strokeWidth="0dp"
-                app:contentPadding="16dp">
+                style="@style/HermesCard"
+                app:contentPadding="@dimen/space_lg">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -130,7 +285,7 @@
                     <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_md"
                         android:hint="@string/settings_api_key"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -146,7 +301,7 @@
                     <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="@dimen/space_md"
                         android:hint="@string/settings_system_prompt"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
@@ -164,26 +319,178 @@
                         android:id="@+id/buttonSave"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="20dp"
+                        android:layout_marginTop="@dimen/space_lg"
                         android:text="@string/settings_save" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 卡片2：关于 -->
+            <!-- 卡片2：外观 -->
             <TextView
                 style="@style/SectionLabel"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="@dimen/space_xl"
+                android:layout_marginBottom="@dimen/space_xs"
+                android:text="@string/section_appearance" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/HermesCard"
+                app:contentPadding="@dimen/space_lg">
+
+                <RadioGroup
+                    android:id="@+id/radioGroupNightMode"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <RadioButton
+                        android:id="@+id/radioSystem"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/night_mode_system"
+                        android:textSize="15sp"
+                        android:textColor="@color/text_primary"
+                        android:paddingStart="@dimen/space_sm"
+                        android:paddingTop="@dimen/space_sm"
+                        android:paddingBottom="@dimen/space_sm" />
+
+                    <RadioButton
+                        android:id="@+id/radioLight"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/night_mode_light"
+                        android:textSize="15sp"
+                        android:textColor="@color/text_primary"
+                        android:paddingStart="@dimen/space_sm"
+                        android:paddingTop="@dimen/space_sm"
+                        android:paddingBottom="@dimen/space_sm" />
+
+                    <RadioButton
+                        android:id="@+id/radioDark"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/night_mode_dark"
+                        android:textSize="15sp"
+                        android:textColor="@color/text_primary"
+                        android:paddingStart="@dimen/space_sm"
+                        android:paddingTop="@dimen/space_sm"
+                        android:paddingBottom="@dimen/space_sm" />
+                </RadioGroup>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 卡片：后台与显示 -->
+            <TextView
+                style="@style/SectionLabel"
+                android:layout_marginTop="@dimen/space_xl"
+                android:layout_marginBottom="@dimen/space_xs"
+                android:text="@string/section_background" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                style="@style/HermesCard"
+                app:contentPadding="@dimen/space_lg">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_keep_screen_on"
+                                android:textSize="16sp"
+                                android:textColor="@color/text_primary" />
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="@string/settings_keep_screen_on_desc"
+                                android:textSize="13sp"
+                                android:textColor="@color/text_secondary" />
+                        </LinearLayout>
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchKeepScreenOn"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1px"
+                        android:layout_marginTop="@dimen/space_md"
+                        android:layout_marginBottom="@dimen/space_md"
+                        android:background="@color/divider" />
+
+                    <LinearLayout
+                        android:id="@+id/layoutBatteryOptimization"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_battery_optimization"
+                                android:textSize="16sp"
+                                android:textColor="@color/text_primary" />
+
+                            <TextView
+                                android:id="@+id/textBatteryStatus"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="@string/settings_battery_optimization_disabled"
+                                android:textSize="13sp"
+                                android:textColor="@color/text_secondary" />
+                        </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="@color/text_tertiary" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 卡片3：关于 -->
+            <TextView
+                style="@style/SectionLabel"
+                android:layout_marginTop="@dimen/space_xl"
+                android:layout_marginBottom="@dimen/space_xs"
                 android:text="@string/section_about" />
 
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                app:cardBackgroundColor="@color/surface"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="2dp"
-                app:strokeWidth="0dp"
-                app:contentPadding="16dp">
+                style="@style/HermesCard"
+                app:contentPadding="@dimen/space_lg">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -200,7 +507,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
+                        android:layout_marginTop="@dimen/space_sm"
                         android:text="@string/about_desc"
                         android:textSize="14sp"
                         android:textColor="@color/text_secondary"

@@ -1,7 +1,9 @@
 package com.hermes.chat.data.remote
 
+import android.util.Log
 import com.hermes.chat.data.model.ApprovalRequest
 import com.hermes.chat.data.model.ChatMessage
+import com.hermes.chat.data.model.ToolProgressEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -14,21 +16,32 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 /**
- * Hermes 后端客户端：以 OpenAI 兼容的 SSE 方式流式调用 /v1/chat/completions。
+ * Hermes 后端客户端。
  *
- * 约定：
- *  - 普通内容增量：标准 OpenAI SSE（`data: {"choices":[{"delta":{"content":"..."}}]}`，以 `data: [DONE]` 结束）。
- *  - 审批请求：结构化 SSE 命名事件
- *        event: approval_request
- *        data: {"id":...,"title":...,"detail":...,"options":[...]}
- *    若后端未下发结构化事件，也会对助手正文做文本兜底检测（见 [ApprovalDetector]）。
+ * 对接 Hermes Agent 的 API Server（默认 8642 端口），支持两种对话模式：
+ *  1) 普通流式：POST /v1/chat/completions（stream:true），SSE 事件包括
+ *     - 文本增量：`data: {"choices":[{"delta":{"content":"..."}}]}`（以 `data: [DONE]` 结束）
+ *     - 思考流：delta 中的 `reasoning_content` / `reasoning` / `thinking` 字段
+ *     - 工具进度：`event: hermes.tool.progress` + data `{id,emoji,title,status,preview}`
+ *     - 推理可用：`event: reasoning.available`
+ *     - 审批请求：`event: approval_request`
+ *  2) 长运行模式：POST /v1/runs 创建任务，再用 GET /v1/runs/{id}/events 订阅结构化事件流，
+ *     适合后台任务。事件格式与普通流式一致，故两套路径共用 [streamLoop] 分发。
+ *
+ * 认证：请求头统一带 `Authorization: Bearer <API_SERVER_KEY>`。
  */
 class HermesApi {
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(0, TimeUnit.SECONDS) // 流式读取，不设置读超时
+        .readTimeout(120, TimeUnit.SECONDS) // 空闲 2 分钟视为死连接，触发 SocketTimeoutException → 重试
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .callTimeout(300, TimeUnit.SECONDS) // 整轮调用 5 分钟封顶，防无限挂起
+        .pingInterval(30, TimeUnit.SECONDS) // HTTP/2 保活 + 探测死连接
+        .retryOnConnectionFailure(true)
         .build()
+
+    // ===================== 普通流式对话 =====================
 
     suspend fun streamChat(
         baseUrl: String,
@@ -36,103 +49,213 @@ class HermesApi {
         model: String = "hermes-agent",
         messages: List<ChatMessage>,
         onDelta: (String) -> Unit,
+        onThinking: (String) -> Unit = {},
+        onStatus: (eventType: String, data: String) -> Unit = { _, _ -> },
+        onToolProgress: (ToolProgressEvent) -> Unit = {},
         onApproval: (ApprovalRequest) -> Unit,
         onDone: () -> Unit,
         onError: (Throwable) -> Unit
     ) = withContext(Dispatchers.IO) {
         try {
-            // 归一化 Base URL：
-            // 用户可能填 http://host:port / .../v1 / .../v1/chat/completions 任意一种，
-            // 统一规整成 .../v1/chat/completions，避免重复拼接导致 500。
             val url = normalizeChatCompletionsUrl(baseUrl)
-
-            val bodyJson = JSONObject().apply {
-                // 始终带 model 字段（默认 "hermes-agent"，与 Hermes /v1/models 返回值一致）
-                put("model", model.ifBlank { "hermes-agent" })
-                put("stream", true)
-                put(
-                    "messages",
-                    JSONArray().also { arr ->
-                        messages.forEach { m ->
-                            arr.put(
-                                JSONObject()
-                                    .put("role", m.role)
-                                    .put("content", m.content)
-                            )
-                        }
-                    }
-                )
-            }
-
-            val request = Request.Builder()
-                .url(url)
-                .addHeader("Authorization", "Bearer $apiKey")
-                .addHeader("Accept", "text/event-stream")
-                .post(bodyJson.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
-                .build()
-
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) {
-                val err = response.body?.string().orEmpty()
-                onError(java.io.IOException("HTTP ${response.code}: $err"))
-                return@withContext
-            }
-
-            val source = response.body!!.source()
-            var eventType: String? = null
-            while (true) {
-                val line = source.readUtf8Line() ?: break
-                if (line.isEmpty()) continue
-                if (line.startsWith(":")) continue // SSE 注释 / 心跳
-                if (line.startsWith("event:")) {
-                    eventType = line.substring(6).trim()
-                    continue
-                }
-                if (line.startsWith("data:")) {
-                    val data = line.substring(5).trim()
-                    if (data == "[DONE]") {
-                        onDone()
-                        return@withContext
-                    }
-                    if (eventType == "approval_request") {
-                        parseApproval(data)?.let { onApproval(it) }
-                    } else {
-                        parseContentDelta(data)?.let { onDelta(it) }
-                    }
-                    eventType = null
-                }
-            }
-            onDone()
+            val request = buildRequest(url, apiKey, buildBody(model, messages))
+            streamLoop(request, onDelta, onThinking, onStatus, onToolProgress, onApproval, onDone, onError)
         } catch (e: Exception) {
             onError(e)
         }
     }
 
-    /**
-     * 把用户填写的 Base URL 规整为标准的 OpenAI 兼容聊天端点：
-     *   .../v1/chat/completions
-     * 兼容以下输入：
-     *   http://host:port
-     *   http://host:port/
-     *   http://host:port/v1
-     *   http://host:port/v1/
-     *   http://host:port/v1/chat/completions   （避免重复拼接）
-     */
+    // ===================== 长运行模式（/v1/runs） =====================
+
+    /** 创建一次 run，通过 [onRunId] 返回 run id。 */
+    suspend fun createRun(
+        baseUrl: String,
+        apiKey: String,
+        model: String = "hermes-agent",
+        messages: List<ChatMessage>,
+        onRunId: (String) -> Unit,
+        onError: (Throwable) -> Unit
+    ) = withContext(Dispatchers.IO) {
+        try {
+            val url = normalizeRunsUrl(baseUrl)
+            val request = buildRequest(url, apiKey, buildBody(model, messages))
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                onError(java.io.IOException("HTTP ${response.code}: ${response.body?.string().orEmpty()}"))
+                return@withContext
+            }
+            val json = JSONObject(response.body?.string().orEmpty())
+            val id = json.optString("id", "")
+            if (id.isBlank()) onError(java.io.IOException("Hermes 未返回 run id"))
+            else onRunId(id)
+        } catch (e: Exception) {
+            onError(e)
+        }
+    }
+
+    /** 订阅某个 run 的事件流（GET /v1/runs/{id}/events），事件分发与普通流式一致。 */
+    suspend fun subscribeRunEvents(
+        baseUrl: String,
+        apiKey: String,
+        runId: String,
+        onDelta: (String) -> Unit,
+        onThinking: (String) -> Unit = {},
+        onStatus: (eventType: String, data: String) -> Unit = { _, _ -> },
+        onToolProgress: (ToolProgressEvent) -> Unit = {},
+        onApproval: (ApprovalRequest) -> Unit,
+        onDone: () -> Unit,
+        onError: (Throwable) -> Unit
+    ) = withContext(Dispatchers.IO) {
+        try {
+            val url = normalizeRunEventsUrl(baseUrl, runId)
+            val request = Request.Builder()
+                .url(url)
+                .addHeader("Authorization", "Bearer $apiKey")
+                .addHeader("Accept", "text/event-stream")
+                .get()
+                .build()
+            streamLoop(request, onDelta, onThinking, onStatus, onToolProgress, onApproval, onDone, onError)
+        } catch (e: Exception) {
+            onError(e)
+        }
+    }
+
+    // ===================== SSE 核心循环 =====================
+
+    private suspend fun streamLoop(
+        request: Request,
+        onDelta: (String) -> Unit,
+        onThinking: (String) -> Unit,
+        onStatus: (eventType: String, data: String) -> Unit,
+        onToolProgress: (ToolProgressEvent) -> Unit,
+        onApproval: (ApprovalRequest) -> Unit,
+        onDone: () -> Unit,
+        onError: (Throwable) -> Unit
+    ) {
+        try {
+            Log.i("HermesApi", "streamLoop starting")
+            consumeSse(request) { eventType, data ->
+                when {
+                    eventType == "approval_request" ->
+                        parseApproval(data)?.let { onApproval(it) }
+                    eventType == "hermes.tool.progress" ->
+                        parseToolProgress(data)?.let { onToolProgress(it) }
+                    eventType == "message.delta" -> {
+                        // 部分网关以命名事件推送文本增量（OpenAI 兼容 JSON 或裸文本）
+                        val content = parseContentDelta(data)
+                        if (content != null) onDelta(content)
+                        else if (data.isNotBlank()) onDelta(data)
+                        parseThinkingDelta(data)?.let { onThinking(it) }
+                    }
+                    eventType == "reasoning.available" ->
+                        onStatus(eventType, data)
+                    eventType != null ->
+                        onStatus(eventType, data)
+                    else -> {
+                        parseContentDelta(data)?.let { onDelta(it) }
+                        parseThinkingDelta(data)?.let { onThinking(it) }
+                    }
+                }
+            }
+            Log.i("HermesApi", "streamLoop completed normally → onDone")
+            onDone()
+        } catch (e: Exception) {
+            Log.i("HermesApi", "streamLoop error: ${e.javaClass.simpleName}: ${e.message}")
+            onError(e)
+        }
+    }
+
+    /** 读取 SSE：`event:` 设置事件类型，`data:` 回调 (eventType, data)。`data: [DONE]` 结束循环。 */
+    private fun consumeSse(request: Request, onEvent: (eventType: String?, data: String) -> Unit) {
+        Log.i("HermesApi", "SSE execute → ${request.url}")
+        val response = client.newCall(request).execute()
+        Log.i("HermesApi", "SSE response HTTP ${response.code}")
+        if (!response.isSuccessful) {
+            throw java.io.IOException("HTTP ${response.code}: ${response.body?.string().orEmpty()}")
+        }
+        val source = response.body!!.source()
+        var eventType: String? = null
+        var lineCount = 0
+        var dataEventCount = 0 // 实际收到的 data: 事件数，用于检测空流
+        while (true) {
+            val line = source.readUtf8Line() ?: break
+            lineCount++
+            if (line.isEmpty()) continue
+            if (line.startsWith(":")) continue // SSE 注释 / 心跳
+            if (line.startsWith("event:")) {
+                eventType = line.substring(6).trim()
+                continue
+            }
+            if (line.startsWith("data:")) {
+                val data = line.substring(5).trim()
+                if (data == "[DONE]") {
+                    Log.i("HermesApi", "SSE received [DONE] after $lineCount lines, $dataEventCount data events")
+                    return
+                }
+                dataEventCount++
+                if (lineCount <= 5) Log.i("HermesApi", "SSE line: $line")
+                onEvent(eventType, data)
+                eventType = null
+            }
+        }
+        Log.i("HermesApi", "SSE stream ended after $lineCount lines, $dataEventCount data events (readUtf8Line returned null)")
+        // 空流检测：连接被关闭但没收到任何 data: 行，说明是异常断开而非正常结束。
+        // 抛出异常走 onError 路径触发重试，而不是被当成成功（onDone → finalizeTurn 删除占位消息）。
+        if (dataEventCount == 0) {
+            throw java.io.IOException("SSE stream ended without any data")
+        }
+    }
+
+    // ===================== 请求构造 =====================
+
+    private fun buildRequest(url: String, apiKey: String, body: String): Request =
+        Request.Builder()
+            .url(url)
+            .addHeader("Authorization", "Bearer $apiKey")
+            .addHeader("Accept", "text/event-stream")
+            .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .build()
+
+    private fun buildBody(model: String, messages: List<ChatMessage>): String {
+        val arr = JSONArray()
+        messages.forEach { m ->
+            arr.put(JSONObject().put("role", m.role).put("content", m.content))
+        }
+        return JSONObject().apply {
+            put("model", model.ifBlank { "hermes-agent" })
+            put("stream", true)
+            put("messages", arr)
+        }.toString()
+    }
+
+    // ===================== URL 归一化 =====================
+
     private fun normalizeChatCompletionsUrl(raw: String): String {
         var u = raw.trim().trimEnd('/')
         if (u.isBlank()) return u
-        // 已含完整路径则直接返回
         if (u.endsWith("/chat/completions")) return u
-        // 已含 /v1 则补上 chat/completions
         if (u.endsWith("/v1")) return "$u/chat/completions"
-        // 已含 /v1/ 之类（如 /v1/something）则把末尾替换
         if (u.contains("/v1")) {
             u = u.substringBefore("/v1") + "/v1"
             return "$u/chat/completions"
         }
-        // 默认：当作根地址，补 /v1/chat/completions
         return "$u/v1/chat/completions"
     }
+
+    private fun normalizeRunsUrl(raw: String): String {
+        var u = raw.trim().trimEnd('/')
+        if (u.endsWith("/runs")) return u
+        u = if (u.contains("/v1")) u.substringBefore("/v1") + "/v1" else "$u/v1"
+        return "$u/runs"
+    }
+
+    private fun normalizeRunEventsUrl(raw: String, runId: String): String {
+        var u = raw.trim().trimEnd('/')
+        u = if (u.contains("/v1")) u.substringBefore("/v1") + "/v1" else "$u/v1"
+        return "$u/runs/$runId/events"
+    }
+
+    // ===================== 字段解析 =====================
 
     private fun parseContentDelta(data: String): String? {
         return try {
@@ -144,6 +267,42 @@ class HermesApi {
         } catch (_: Exception) {
             null
         }
+    }
+
+    private fun parseThinkingDelta(data: String): String? {
+        return try {
+            val obj = JSONObject(data)
+            val choices = obj.optJSONArray("choices") ?: return null
+            if (choices.length() == 0) return null
+            val delta = choices.getJSONObject(0).optJSONObject("delta") ?: return null
+            (delta.opt("reasoning_content") as? String)
+                ?: (delta.opt("reasoning") as? String)
+                ?: (delta.opt("thinking") as? String)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun parseToolProgress(data: String): ToolProgressEvent? = try {
+        val o = JSONObject(data)
+        // 尝试从 name/tool/function 字段获取工具标识名，作为 title 的补充
+        val toolName = o.optString("name", o.optString("tool", o.optString("function", "")))
+        val rawTitle = o.optString("title", "")
+        val title = when {
+            rawTitle.isNotBlank() && toolName.isNotBlank() -> "$toolName · $rawTitle"
+            rawTitle.isNotBlank() -> rawTitle
+            toolName.isNotBlank() -> toolName
+            else -> "工具调用"
+        }
+        ToolProgressEvent(
+            id = o.optString("id", UUID.randomUUID().toString()),
+            emoji = o.optString("emoji", "\uD83D\uDD27"),
+            title = title,
+            status = o.optString("status", "started"),
+            preview = o.optString("preview", "")
+        )
+    } catch (_: Exception) {
+        null
     }
 
     private fun parseApproval(data: String): ApprovalRequest? =

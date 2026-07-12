@@ -1,40 +1,73 @@
-<?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingStart="48dp"
-    android:paddingTop="4dp"
-    android:paddingEnd="8dp"
-    android:paddingBottom="4dp">
+    android:paddingStart="@dimen/space_xl"
+    android:paddingTop="@dimen/space_xs"
+    android:paddingEnd="@dimen/space_xs"
+    android:paddingBottom="@dimen/space_xs">
 
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="end"
-        android:orientation="vertical">
+        android:orientation="horizontal"
+        android:gravity="bottom">
 
-        <TextView
-            android:id="@+id/textMessage"
+        <!-- 文字气泡 + 时间（置于左侧，头像在右） -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:maxWidth="300dp"
-            android:background="@drawable/bg_bubble_out"
-            android:textColor="@color/bubble_out_text"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
-            android:textSize="15sp"
-            android:lineSpacingExtra="2dp"
-            android:textIsSelectable="true" />
+            android:orientation="vertical"
+            android:gravity="bottom"
+            android:layout_marginEnd="@dimen/space_md">
 
-        <TextView
-            android:id="@+id/textTime"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end"
-            android:layout_marginTop="3dp"
-            android:textSize="12sp"
-            android:textColor="#B3FFFFFF" />
+            <TextView
+                android:id="@+id/textMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxWidth="@dimen/bubble_max_width"
+                android:background="@drawable/bg_bubble_out"
+                android:textColor="@color/bubble_out_text"
+                android:paddingStart="@dimen/space_md"
+                android:paddingEnd="@dimen/space_md"
+                android:paddingTop="@dimen/space_sm"
+                android:paddingBottom="@dimen/space_sm"
+                android:textSize="16sp"
+                android:lineSpacingExtra="3dp"
+                android:textIsSelectable="true" />
+
+            <TextView
+                android:id="@+id/textTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="end"
+                android:layout_marginTop="@dimen/space_xs"
+                android:layout_marginEnd="2dp"
+                android:textSize="11sp"
+                android:textColor="@color/text_secondary" />
+        </LinearLayout>
+
+        <!-- 用户头像（颜色/字形由 Adapter 按设置注入），底部对齐避免与文字重叠 -->
+        <FrameLayout
+            android:layout_width="@dimen/avatar_chat_size"
+            android:layout_height="@dimen/avatar_chat_size"
+            android:layout_gravity="bottom">
+
+            <ImageView
+                android:id="@+id/imageAvatar"
+                android:layout_width="@dimen/avatar_chat_size"
+                android:layout_height="@dimen/avatar_chat_size"
+                android:background="@drawable/bg_circle_blue"
+                android:scaleType="centerInside" />
+
+            <TextView
+                android:id="@+id/textAvatarLetter"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:textColor="@color/white"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </FrameLayout>
     </LinearLayout>
 </FrameLayout>

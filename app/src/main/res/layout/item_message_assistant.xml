@@ -1,40 +1,194 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingStart="8dp"
-    android:paddingTop="4dp"
-    android:paddingEnd="48dp"
-    android:paddingBottom="4dp">
+    android:orientation="horizontal"
+    android:paddingStart="@dimen/space_xs"
+    android:paddingTop="@dimen/space_sm"
+    android:paddingEnd="@dimen/space_xl"
+    android:paddingBottom="@dimen/space_xs">
 
+    <!-- 助手头像（颜色/字形由 Adapter 按设置注入） -->
+    <FrameLayout
+        android:layout_width="@dimen/avatar_chat_size"
+        android:layout_height="@dimen/avatar_chat_size"
+        android:layout_gravity="bottom"
+        android:layout_marginEnd="@dimen/space_sm">
+
+        <ImageView
+            android:id="@+id/imageAvatar"
+            android:layout_width="@dimen/avatar_chat_size"
+            android:layout_height="@dimen/avatar_chat_size"
+            android:background="@drawable/bg_circle_blue"
+            android:scaleType="centerInside" />
+
+        <TextView
+            android:id="@+id/textAvatarLetter"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:textColor="@color/white"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+    </FrameLayout>
+
+    <!-- 气泡区域 -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="start"
         android:orientation="vertical">
 
+        <!-- 推理折叠卡片（持久化后的 reasoning_content） -->
+        <LinearLayout
+            android:id="@+id/layoutReasoning"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_reasoning"
+            android:paddingStart="@dimen/space_md"
+            android:paddingTop="@dimen/space_sm"
+            android:paddingEnd="@dimen/space_md"
+            android:paddingBottom="@dimen/space_sm"
+            android:layout_marginBottom="@dimen/space_xs"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/layoutReasoningHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/reasoning_title"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/reasoning_title" />
+
+                <ImageView
+                    android:id="@+id/imageReasoningChevron"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_marginStart="@dimen/space_xs"
+                    android:src="@drawable/ic_chevron_right"
+                    android:rotation="0"
+                    app:tint="@color/text_secondary" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/textReasoning"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/space_xs"
+                android:maxWidth="@dimen/bubble_max_width"
+                android:textSize="13sp"
+                android:lineSpacingExtra="2dp"
+                android:textColor="@color/reasoning_text"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- 思考流（流式期间、有思考内容时显示，TUI 风格实时展示） -->
+        <LinearLayout
+            android:id="@+id/layoutThinking"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_thinking"
+            android:paddingStart="@dimen/space_md"
+            android:paddingTop="@dimen/space_sm"
+            android:paddingEnd="@dimen/space_md"
+            android:paddingBottom="@dimen/space_sm"
+            android:layout_marginBottom="@dimen/space_xs"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/thinking_label"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="@color/tg_blue" />
+
+            <TextView
+                android:id="@+id/textThinking"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:maxWidth="@dimen/bubble_max_width"
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:lineSpacingExtra="2dp" />
+        </LinearLayout>
+
+        <!-- 文字气泡（Markdown 渲染） -->
         <TextView
             android:id="@+id/textMessage"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:maxWidth="300dp"
+            android:maxWidth="@dimen/bubble_max_width"
             android:background="@drawable/bg_bubble_in"
             android:textColor="@color/bubble_in_text"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
-            android:textSize="15sp"
-            android:lineSpacingExtra="2dp"
+            android:paddingStart="@dimen/space_md"
+            android:paddingEnd="@dimen/space_md"
+            android:paddingTop="@dimen/space_sm"
+            android:paddingBottom="@dimen/space_sm"
+            android:textSize="16sp"
+            android:lineSpacingExtra="3dp"
             android:textIsSelectable="true" />
+
+        <!-- 打字指示器气泡（content 为空且正在流式时显示） -->
+        <FrameLayout
+            android:id="@+id/layoutTyping"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_bubble_in"
+            android:paddingStart="@dimen/space_lg"
+            android:paddingEnd="@dimen/space_lg"
+            android:paddingTop="@dimen/space_md"
+            android:paddingBottom="@dimen/space_md"
+            android:visibility="gone">
+
+            <com.hermes.chat.ui.chat.TypingIndicatorView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </FrameLayout>
+
+        <!-- 实时状态文字（Hermes 正在思考 / 生成 / 调用工具…） -->
+        <TextView
+            android:id="@+id/textStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_xs"
+            android:layout_marginStart="2dp"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:visibility="gone" />
+
+        <!-- 工具调用记录（流式结束后持久化展示） -->
+        <TextView
+            android:id="@+id/textTools"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/space_xs"
+            android:layout_marginStart="2dp"
+            android:textSize="11sp"
+            android:textColor="@color/text_secondary"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/textTime"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="start"
-            android:layout_marginTop="3dp"
-            android:textSize="12sp"
+            android:layout_marginTop="@dimen/space_xs"
+            android:layout_marginStart="2dp"
+            android:textSize="11sp"
             android:textColor="@color/text_secondary" />
     </LinearLayout>
-</FrameLayout>
+</LinearLayout>

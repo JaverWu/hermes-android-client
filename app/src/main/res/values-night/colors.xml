@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- ===== iOS 设计系统配色（深色） ===== -->
+
+    <!-- 系统蓝 -->
+    <color name="tg_blue">#0A84FF</color>
+    <color name="tg_blue_dark">#0A84FF</color>
+    <color name="tg_blue_pressed">#409CFF</color>
+
+    <!-- 页面背景（纯黑） / 分组背景 -->
+    <color name="page_bg">#000000</color>
+    <color name="chat_bg">#000000</color>
+    <color name="surface">#1C1C1E</color>
+
+    <!-- 工具栏 / 状态栏（深色导航栏） -->
+    <color name="toolbar_bg">#1C1C1E</color>
+    <color name="toolbar_border">#38383A</color>
+    <color name="status_bar">#000000</color>
+
+    <!-- 代码块背景 -->
+    <color name="code_block_bg">#1C1C1E</color>
+    <color name="code_block_text">#FF9F9F</color>
+
+    <!-- 气泡（收进）：深色次级填充 -->
+    <color name="bubble_in_bg">#2C2C2E</color>
+    <color name="bubble_in_border">#2C2C2E</color>
+    <color name="bubble_in_text">#FFFFFF</color>
+
+    <!-- 气泡（发出） -->
+    <color name="bubble_out_bg">#0A84FF</color>
+    <color name="bubble_out_text">#FFFFFF</color>
+
+    <!-- 文本 -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#8E8E93</color>
+    <color name="text_tertiary">#48484A</color>
+    <color name="text_on_blue">#FFFFFF</color>
+    <color name="text_on_blue_secondary">#CCFFFFFF</color>
+
+    <!-- 分隔线 -->
+    <color name="divider">#38383A</color>
+
+    <!-- 系统消息背景 -->
+    <color name="system_bg">#1C1C1E</color>
+
+    <!-- 审批卡片（深色暖棕） -->
+    <color name="approval_bg">#2A2118</color>
+    <color name="approval_border">#4A3D20</color>
+    <color name="approval_title">#F0B050</color>
+    <color name="approval_btn_bg">#0A84FF</color>
+    <color name="approval_btn_text">#FFFFFF</color>
+
+    <!-- 工具调用卡片 -->
+    <color name="tool_card_bg">#1C1C1E</color>
+    <color name="tool_card_border">#38383A</color>
+    <color name="tool_card_accent">#0A84FF</color>
+    <color name="tool_card_title">#FFFFFF</color>
+    <color name="tool_card_preview">#C7C7CC</color>
+    <color name="tool_card_status_bg">#2C2C2E</color>
+    <color name="tool_card_status_text">#8E8E93</color>
+
+    <!-- 推理折叠卡片 -->
+    <color name="reasoning_bg">#1C1C1E</color>
+    <color name="reasoning_border">#38383A</color>
+    <color name="reasoning_title">#8E8E93</color>
+    <color name="reasoning_text">#C7C7CC</color>
+
+    <!-- 头像调色板（深色略暗） -->
+    <color name="avatar_1">#0A84FF</color>
+    <color name="avatar_2">#30D158</color>
+    <color name="avatar_3">#FF9F0A</color>
+    <color name="avatar_4">#FF375F</color>
+    <color name="avatar_5">#BF5AF2</color>
+    <color name="avatar_6">#64D2FF</color>
+
+    <!-- 兼容旧引用 -->
+    <color name="hermes_primary">#0A84FF</color>
+    <color name="hermes_primary_dark">#0A84FF</color>
+    <color name="hermes_on_primary">#FFFFFF</color>
+    <color name="bubble_user">#0A84FF</color>
+    <color name="bubble_user_text">#FFFFFF</color>
+    <color name="bubble_assistant">#2C2C2E</color>
+    <color name="bubble_assistant_text">#FFFFFF</color>
+    <color name="bubble_assistant_border">#2C2C2E</color>
+    <color name="approval_text">#F0B050</color>
+    <color name="system_text">#8E8E93</color>
+
+    <!-- 顶部工具状态条（深色） -->
+    <color name="tool_strip_bg">#1C1C1E</color>
+    <color name="tool_chip_bg">#2C2C2E</color>
+    <color name="tool_chip_border">#38383A</color>
+    <color name="tool_chip_title">#FFFFFF</color>
+    <color name="tool_chip_sub">#8E8E93</color>
+    <color name="tool_chip_running">#FF9F0A</color>
+    <color name="tool_chip_done">#30D158</color>
+    <color name="tool_chip_error">#FF453A</color>
+    <color name="tool_preview_bg">#2C2C2E</color>
+    <color name="tool_preview_border">#38383A</color>
+    <color name="tool_preview_text">#C7C7CC</color>
+</resources>

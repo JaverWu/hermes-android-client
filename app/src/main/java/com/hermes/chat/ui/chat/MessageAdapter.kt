@@ -1,9 +1,10 @@
 package com.hermes.chat.ui.chat
 
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.TextView
+import android.widget.FrameLayout
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -11,18 +12,54 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.hermes.chat.R
 import com.hermes.chat.data.local.MessageEntity
+import com.hermes.chat.data.preferences.SettingsRepository
 import com.hermes.chat.databinding.ItemMessageApprovalBinding
 import com.hermes.chat.databinding.ItemMessageAssistantBinding
 import com.hermes.chat.databinding.ItemMessageSystemBinding
 import com.hermes.chat.databinding.ItemMessageUserBinding
+import com.hermes.chat.ui.common.AvatarPresets
+import io.noties.markwon.Markwon
+import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
+import io.noties.markwon.ext.tables.TablePlugin
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
 class MessageAdapter(
-    private val onApprovalClick: (MessageEntity, String) -> Unit
+    private val settings: SettingsRepository,
+    private val onApprovalClick: (MessageEntity, String) -> Unit,
+    private val onMessageLongClick: (MessageEntity) -> Unit
 ) : ListAdapter<MessageEntity, RecyclerView.ViewHolder>(DIFF) {
+
+    private var markwon: Markwon? = null
+    private var streamingAssistantId: String? = null
+    private var thinkingContent: String = ""
+    private var statusText: String = ""
+    /** 流式期间助手消息的实时正文（来自 ActiveRunState，比数据库落库更及时） */
+    var liveContent: String = ""
+
+    /** 折叠状态（按消息 id 记忆，避免重绑时跳变） */
+    private val reasoningExpanded = mutableSetOf<String>()
+
+    fun setStreamingAssistantId(id: String?) {
+        streamingAssistantId = id
+    }
+
+    fun setStreamingState(thinking: String, status: String) {
+        thinkingContent = thinking
+        statusText = status
+    }
+
+    private fun getMarkwon(context: Context): Markwon {
+        if (markwon == null) {
+            markwon = Markwon.builder(context)
+                .usePlugin(StrikethroughPlugin.create())
+                .usePlugin(TablePlugin.create(context))
+                .build()
+        }
+        return markwon!!
+    }
 
     override fun getItemViewType(position: Int): Int = when (getItem(position).role) {
         MessageEntity.ROLE_USER -> VIEW_USER
@@ -43,18 +80,91 @@ class MessageAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val item = getItem(position)
+        val ctx = holder.itemView.context
+        holder.itemView.setOnLongClickListener { onMessageLongClick(item); true }
         when (holder) {
             is UserVH -> {
+                val user = AvatarPresets.user(settings.userAvatarIndex)
+                holder.binding.imageAvatar.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(ContextCompat.getColor(ctx, user.colorRes))
+                holder.binding.textAvatarLetter.text = user.glyph
                 holder.binding.textMessage.text = item.content
                 holder.binding.textTime.text = formatTime(item.createdAt)
             }
             is AssistantVH -> {
-                holder.binding.textMessage.text =
-                    if (item.content.isBlank()) "Hermes 正在输入…" else item.content
+                val ai = AvatarPresets.ai(settings.aiAvatarIndex)
+                holder.binding.imageAvatar.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(ContextCompat.getColor(ctx, ai.colorRes))
+                holder.binding.textAvatarLetter.text = ai.glyph
+
+                val isStreamingThis = item.id == streamingAssistantId
+                val live = if (isStreamingThis) liveContent else item.content
+                val hasLive = live.isNotBlank()
+
+                // 推理折叠卡片（持久化后的 reasoning_content）
+                bindReasoning(holder, item)
+
+                if (isStreamingThis) {
+                    if (hasLive) {
+                        // 流式期间用纯文本，避免每个 delta 都重渲染 Markdown
+                        holder.binding.layoutThinking.visibility = View.GONE
+                        holder.binding.layoutTyping.visibility = View.GONE
+                        holder.binding.textMessage.visibility = View.VISIBLE
+                        holder.binding.textMessage.text = live
+                    } else if (thinkingContent.isNotBlank()) {
+                        holder.binding.layoutThinking.visibility = View.VISIBLE
+                        holder.binding.textThinking.text = thinkingContent
+                        holder.binding.layoutTyping.visibility = View.GONE
+                        holder.binding.textMessage.visibility = View.GONE
+                    } else {
+                        holder.binding.layoutThinking.visibility = View.GONE
+                        holder.binding.layoutTyping.visibility = View.VISIBLE
+                        holder.binding.textMessage.visibility = View.GONE
+                    }
+                } else {
+                    holder.binding.layoutThinking.visibility = View.GONE
+                    holder.binding.layoutTyping.visibility = View.GONE
+                    holder.binding.textMessage.visibility = View.VISIBLE
+                    getMarkwon(ctx).setMarkdown(
+                        holder.binding.textMessage,
+                        if (item.content.isNotBlank()) item.content else "…"
+                    )
+                }
+
+                if (isStreamingThis && statusText.isNotBlank()) {
+                    holder.binding.textStatus.visibility = View.VISIBLE
+                    holder.binding.textStatus.text = statusText
+                } else {
+                    holder.binding.textStatus.visibility = View.GONE
+                }
+
+                // 工具调用记录已移至顶部工具条展示，气泡中不再重复显示
+                holder.binding.textTools.visibility = View.GONE
+
                 holder.binding.textTime.text = formatTime(item.createdAt)
             }
             is SystemVH -> holder.binding.textMessage.text = item.content
             is ApprovalVH -> holder.bind(item, onApprovalClick)
+        }
+    }
+
+    private fun bindReasoning(holder: AssistantVH, item: MessageEntity) {
+        val reasoning = item.reasoning
+        if (reasoning.isBlank()) {
+            holder.binding.layoutReasoning.visibility = View.GONE
+            return
+        }
+        holder.binding.layoutReasoning.visibility = View.VISIBLE
+        holder.binding.textReasoning.text = reasoning
+        val expanded = reasoningExpanded.contains(item.id)
+        holder.binding.textReasoning.visibility = if (expanded) View.VISIBLE else View.GONE
+        holder.binding.imageReasoningChevron.rotation = if (expanded) 90f else 0f
+        holder.binding.layoutReasoningHeader.setOnClickListener {
+            if (reasoningExpanded.contains(item.id)) reasoningExpanded.remove(item.id)
+            else reasoningExpanded.add(item.id)
+            val nowExpanded = reasoningExpanded.contains(item.id)
+            holder.binding.textReasoning.visibility = if (nowExpanded) View.VISIBLE else View.GONE
+            holder.binding.imageReasoningChevron.rotation = if (nowExpanded) 90f else 0f
         }
     }
 
@@ -64,7 +174,7 @@ class MessageAdapter(
     class ApprovalVH(val binding: ItemMessageApprovalBinding) : RecyclerView.ViewHolder(binding.root) {
         fun bind(item: MessageEntity, onClick: (MessageEntity, String) -> Unit) {
             val ctx = binding.root.context
-            binding.textTitle.text = item.approvalTitle.ifBlank { "Hermes 请求你的确认" }
+            binding.textTitle.text = item.approvalTitle.ifBlank { ctx.getString(R.string.approval_hint) }
             if (item.approvalDetail.isNotBlank()) {
                 binding.textDetail.visibility = View.VISIBLE
                 binding.textDetail.text = item.approvalDetail
@@ -90,7 +200,7 @@ class MessageAdapter(
                     backgroundTintList = android.content.res.ColorStateList.valueOf(
                         if (resolved) gray else blue
                     )
-                    setTextColor(if (resolved) white else white)
+                    setTextColor(white)
                     setOnClickListener { onClick(item, option) }
                 }
                 val params = ViewGroup.MarginLayoutParams(
@@ -100,7 +210,7 @@ class MessageAdapter(
                 binding.layoutOptions.addView(btn, params)
             }
             if (resolved) {
-                val tag = TextView(ctx).apply {
+                val tag = android.widget.TextView(ctx).apply {
                     text = "已处理"
                     setTextColor(gray)
                 }

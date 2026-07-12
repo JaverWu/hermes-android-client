@@ -4,59 +4,100 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- ===== Telegram 设计系统配色 ===== -->
-    <!-- 主色 / 强调 -->
-    <color name="tg_blue">#3390EC</color>
-    <color name="tg_blue_dark">#2B7CD3</color>
-    <color name="tg_blue_pressed">#2470BD</color>
+    <!-- ===== iOS 设计系统配色（浅色） ===== -->
+    <!-- 系统蓝（主色 / 强调 / 发出气泡） -->
+    <color name="tg_blue">#007AFF</color>
+    <color name="tg_blue_dark">#0066D6</color>
+    <color name="tg_blue_pressed">#0062CC</color>
 
-    <!-- 页面与卡片背景 -->
+    <!-- 页面背景（系统白） / 分组背景（iOS 灰） -->
     <color name="page_bg">#FFFFFF</color>
-    <color name="chat_bg">#F0F2F5</color>
+    <color name="chat_bg">#F2F2F7</color>
     <color name="surface">#FFFFFF</color>
 
-    <!-- 气泡（收进） -->
-    <color name="bubble_in_bg">#FFFFFF</color>
-    <color name="bubble_in_border">#E6E8EB</color>
-    <color name="bubble_in_text">#1C1C1E</color>
+    <!-- 工具栏 / 状态栏（iOS 白底导航栏 + 底部发丝线） -->
+    <color name="toolbar_bg">#FFFFFF</color>
+    <color name="toolbar_border">#E5E5EA</color>
+    <color name="status_bar">#FFFFFF</color>
 
-    <!-- 气泡（发出） -->
-    <color name="bubble_out_bg">#3390EC</color>
+    <!-- 代码块背景 -->
+    <color name="code_block_bg">#F2F2F7</color>
+    <color name="code_block_text">#C41A16</color>
+
+    <!-- 气泡（收进）：iOS 次级填充灰 -->
+    <color name="bubble_in_bg">#E9E9EB</color>
+    <color name="bubble_in_border">#E9E9EB</color>
+    <color name="bubble_in_text">#000000</color>
+
+    <!-- 气泡（发出）：iOS 系统蓝 -->
+    <color name="bubble_out_bg">#007AFF</color>
     <color name="bubble_out_text">#FFFFFF</color>
 
-    <!-- 文本 -->
-    <color name="text_primary">#1C1C1E</color>
-    <color name="text_secondary">#8A8F98</color>
+    <!-- 文本（iOS label 层级） -->
+    <color name="text_primary">#000000</color>
+    <color name="text_secondary">#8E8E93</color>
+    <color name="text_tertiary">#C7C7CC</color>
     <color name="text_on_blue">#FFFFFF</color>
-    <color name="text_on_blue_secondary">#B3FFFFFF</color>
+    <color name="text_on_blue_secondary">#CCFFFFFF</color>
 
-    <!-- 分隔线 -->
-    <color name="divider">#E6E8EB</color>
+    <!-- 分隔线（iOS hairline） -->
+    <color name="divider">#C6C6C8</color>
+
+    <!-- 系统消息背景 -->
+    <color name="system_bg">#F2F2F7</color>
 
     <!-- 审批卡片（精致暖橙） -->
     <color name="approval_bg">#FFF6E5</color>
     <color name="approval_border">#FFD98A</color>
     <color name="approval_title">#B8740A</color>
-    <color name="approval_btn_bg">#3390EC</color>
+    <color name="approval_btn_bg">#007AFF</color>
     <color name="approval_btn_text">#FFFFFF</color>
 
-    <!-- 头像调色板（按名称 hash 选取） -->
-    <color name="avatar_1">#E17076</color>
-    <color name="avatar_2">#7BC862</color>
-    <color name="avatar_3">#65AADD</color>
-    <color name="avatar_4">#A695E7</color>
-    <color name="avatar_5">#EE7AAE</color>
-    <color name="avatar_6">#F0A25E</color>
+    <!-- 工具调用卡片（VS Code Copilot 风：左强调条 + 折叠） -->
+    <color name="tool_card_bg">#F2F2F7</color>
+    <color name="tool_card_border">#D1D1D6</color>
+    <color name="tool_card_accent">#007AFF</color>
+    <color name="tool_card_title">#000000</color>
+    <color name="tool_card_preview">#48484A</color>
+    <color name="tool_card_status_bg">#E9E9EB</color>
+    <color name="tool_card_status_text">#8E8E93</color>
 
-    <!-- 兼容旧引用（映射为等价 Telegram 色，避免遗留引用断裂） -->
-    <color name="hermes_primary">#3390EC</color>
-    <color name="hermes_primary_dark">#2B7CD3</color>
+    <!-- 推理折叠卡片 -->
+    <color name="reasoning_bg">#F2F2F7</color>
+    <color name="reasoning_border">#D1D1D6</color>
+    <color name="reasoning_title">#8E8E93</color>
+    <color name="reasoning_text">#48484A</color>
+
+    <!-- 顶部工具状态条（Hermes 标题栏下方，常驻、不干扰对话滚动） -->
+    <color name="tool_strip_bg">#F7F7FA</color>
+    <color name="tool_chip_bg">#FFFFFF</color>
+    <color name="tool_chip_border">#D1D1D6</color>
+    <color name="tool_chip_title">#000000</color>
+    <color name="tool_chip_sub">#8E8E93</color>
+    <color name="tool_chip_running">#FF9500</color>
+    <color name="tool_chip_done">#34C759</color>
+    <color name="tool_chip_error">#FF3B30</color>
+    <color name="tool_preview_bg">#FFFFFF</color>
+    <color name="tool_preview_border">#D1D1D6</color>
+    <color name="tool_preview_text">#48484A</color>
+
+    <!-- 头像调色板（iOS 风，按名称 hash 选取） -->
+    <color name="avatar_1">#007AFF</color>
+    <color name="avatar_2">#34C759</color>
+    <color name="avatar_3">#FF9500</color>
+    <color name="avatar_4">#FF2D55</color>
+    <color name="avatar_5">#AF52DE</color>
+    <color name="avatar_6">#5AC8FA</color>
+
+    <!-- 兼容旧引用（映射为等价 iOS 色，避免遗留引用断裂） -->
+    <color name="hermes_primary">#007AFF</color>
+    <color name="hermes_primary_dark">#0066D6</color>
     <color name="hermes_on_primary">#FFFFFF</color>
-    <color name="bubble_user">#3390EC</color>
+    <color name="bubble_user">#007AFF</color>
     <color name="bubble_user_text">#FFFFFF</color>
-    <color name="bubble_assistant">#FFFFFF</color>
-    <color name="bubble_assistant_text">#1C1C1E</color>
-    <color name="bubble_assistant_border">#E6E8EB</color>
+    <color name="bubble_assistant">#E9E9EB</color>
+    <color name="bubble_assistant_text">#000000</color>
+    <color name="bubble_assistant_border">#E9E9EB</color>
     <color name="approval_text">#B8740A</color>
-    <color name="system_text">#8A8F98</color>
+    <color name="system_text">#8E8E93</color>
 </resources>

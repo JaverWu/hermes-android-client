@@ -27,6 +27,41 @@ class SettingsRepository(context: Context) {
         get() = prefs.getString(KEY_SYSTEM_PROMPT, "") ?: ""
         set(v) = prefs.edit().putString(KEY_SYSTEM_PROMPT, v).apply()
 
+    /** 夜间模式："system"（跟随系统）/ "light" / "dark" */
+    var nightMode: String
+        get() = prefs.getString(KEY_NIGHT_MODE, MODE_SYSTEM) ?: MODE_SYSTEM
+        set(v) = prefs.edit().putString(KEY_NIGHT_MODE, v).apply()
+
+    /** 用户头像预设索引（见 [com.hermes.chat.ui.common.AvatarPresets.USER]） */
+    var userAvatarIndex: Int
+        get() = prefs.getInt(KEY_USER_AVATAR, 0)
+        set(v) = prefs.edit().putInt(KEY_USER_AVATAR, v).apply()
+
+    /** Hermes 头像预设索引（见 [com.hermes.chat.ui.common.AvatarPresets.AI]） */
+    var aiAvatarIndex: Int
+        get() = prefs.getInt(KEY_AI_AVATAR, 0)
+        set(v) = prefs.edit().putInt(KEY_AI_AVATAR, v).apply()
+
+    /** 长运行模式（/v1/runs）开关：Service 读取以决定走普通流式还是 runs 订阅。 */
+    var runMode: Boolean
+        get() = prefs.getBoolean(KEY_RUN_MODE, false)
+        set(v) = prefs.edit().putBoolean(KEY_RUN_MODE, v).apply()
+
+    /** 保持屏幕常亮：聊天页 FLAG_KEEP_SCREEN_ON，避免后台断连 */
+    var keepScreenOn: Boolean
+        get() = prefs.getBoolean(KEY_KEEP_SCREEN_ON, false)
+        set(v) = prefs.edit().putBoolean(KEY_KEEP_SCREEN_ON, v).apply()
+
+    // ===== 草稿：按会话 id 缓存未发送的输入，退出再进不丢失 =====
+    fun getDraft(conversationId: String): String =
+        prefs.getString(KEY_DRAFT + conversationId, "") ?: ""
+
+    fun setDraft(conversationId: String, text: String) =
+        prefs.edit().putString(KEY_DRAFT + conversationId, text).apply()
+
+    fun clearDraft(conversationId: String) =
+        prefs.edit().remove(KEY_DRAFT + conversationId).apply()
+
     // 配置只需 API 地址 + Key；模型由 Hermes 默认提供，不再强制要求。
     fun isConfigured(): Boolean =
         baseUrl.isNotBlank() && apiKey.isNotBlank()
@@ -38,5 +73,15 @@ class SettingsRepository(context: Context) {
         private const val KEY_API_KEY = "api_key"
         private const val KEY_MODEL = "model"
         private const val KEY_SYSTEM_PROMPT = "system_prompt"
+        private const val KEY_NIGHT_MODE = "night_mode"
+        private const val KEY_USER_AVATAR = "user_avatar_index"
+        private const val KEY_AI_AVATAR = "ai_avatar_index"
+        private const val KEY_RUN_MODE = "run_mode"
+        private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
+        private const val KEY_DRAFT = "draft_"
+
+        const val MODE_SYSTEM = "system"
+        const val MODE_LIGHT = "light"
+        const val MODE_DARK = "dark"
     }
 }

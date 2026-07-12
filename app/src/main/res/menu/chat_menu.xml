@@ -2,6 +2,11 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/action_edit_avatar"
+        android:icon="@drawable/ic_person"
+        android:title="@string/action_edit_avatar"
+        app:showAsAction="ifRoom" />
+    <item
         android:id="@+id/action_new_chat"
         android:title="@string/action_new_chat"
         app:showAsAction="never" />
@@ -10,4 +15,9 @@
         android:icon="@drawable/ic_settings"
         android:title="@string/action_settings"
         app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_run_mode"
+        android:checkable="true"
+        android:title="@string/run_mode_off"
+        app:showAsAction="never" />
 </menu>

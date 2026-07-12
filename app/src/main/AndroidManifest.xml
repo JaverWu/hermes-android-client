@@ -3,6 +3,15 @@
 
     <!-- 需要联网访问 Hermes 后端 -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 前台 Service：发完消息后继续在后台接收流式回复 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Android 13+ 本地通知（"回复了你"提示） -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- WakeLock：切后台/锁屏时保持 CPU 唤醒，确保 SSE 流式回复能被及时读取 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 请求电池优化白名单：后台 SSE 不被 Doze 杀 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <!-- Android 9+ 明文流量默认禁止，调试本地后端时可放开（仅 debug 生效） -->
     <application
         android:name=".HermesApplication"
@@ -32,6 +41,12 @@
             android:exported="false"
             android:parentActivityName=".ui.conversations.ConversationsActivity"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- 前台 Service：承接对话流式接收，发完消息即可切走/锁屏，回复照样落库并弹通知 -->
+        <service
+            android:name=".ui.chat.RunWatcherService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
     </application>
 
 </manifest>

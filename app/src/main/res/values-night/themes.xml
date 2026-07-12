@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 夜间模式主题：深色状态栏 + 浅色状态栏图标 -->
+    <style name="Theme.HermesChat" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/tg_blue</item>
+        <item name="colorPrimaryVariant">@color/tg_blue_dark</item>
+        <item name="colorOnPrimary">@color/text_on_blue</item>
+        <item name="colorAccent">@color/tg_blue</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="android:windowBackground">@color/page_bg</item>
+        <item name="android:statusBarColor">@color/status_bar</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:navigationBarColor">@color/page_bg</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="fontFamily">sans-serif</item>
+    </style>
+</resources>
