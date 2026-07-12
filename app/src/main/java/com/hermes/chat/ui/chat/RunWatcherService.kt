@@ -49,6 +49,9 @@ class RunWatcherService : Service() {
     companion object {
         const val EXTRA_CONVERSATION_ID = "conversation_id"
         const val EXTRA_ASSISTANT_ID = "assistant_id"
+        /** 续传模式：App 被杀后用既有 runId 重连服务端仍在跑的 run，而不是新建。 */
+        const val EXTRA_RESUME = "resume"
+        const val EXTRA_RUN_ID = "run_id"
         private const val CHANNEL_ID = "hermes_run_high"
         private const val NOTIF_ID = 1001
     }
@@ -74,8 +77,11 @@ class RunWatcherService : Service() {
     private var finalized = false
     /** 卡死看门狗协程句柄，每轮对话启动一个，结算时取消。 */
     private var stallJob: Job? = null
-    /** 无活动多久判定为卡死（150s，略大于 SSE readTimeout 的 120s，避免误杀正常心跳）。 */
+    /** 无活动多久判定为卡死（150s，看门狗作为真正卡死的兜底；readTimeout 已设为 0，不再由读超时误杀）。 */
     private val STALL_TIMEOUT_MS = 150_000L
+    /** 当前轮（含续传/重试）的 CompletableDeferred：供看门狗 forceFinalize 在完成结算后唤醒
+     *  [runTurn] 里阻塞在 done.await() 的协程，避免 SSE 仍阻塞时永久挂起。 */
+    @Volatile private var currentDone: CompletableDeferred<Unit>? = null
 
     /**
      * 后台/锁屏时保持 CPU 唤醒。前台 Service 只保活进程，锁屏/挂后台后 CPU 仍可能休眠，
@@ -113,7 +119,13 @@ class RunWatcherService : Service() {
         if (wakeLock.isHeld.not()) {
             wakeLock.acquire(10 * 60 * 1000L) // 10 分钟超时保护，防止泄漏
         }
-        scope.launch { runTurn() }
+        // 续传模式：App 被杀后用既有 runId 直接重连服务端仍在跑的 run，
+        // 跳过 createRun（不会再产生一个新 run），从而把被中断的回复补全。
+        val resumeRunId = if (intent.getBooleanExtra(EXTRA_RESUME, false) == true) {
+            intent.getStringExtra(EXTRA_RUN_ID)
+                ?: settings.getRunId(aid) // 兜底：extra 没带就从持久化里取
+        } else null
+        scope.launch { runTurn(resumeRunId) }
         return START_NOT_STICKY
     }
 
@@ -133,11 +145,11 @@ class RunWatcherService : Service() {
     /** 最多重试次数（首轮 + 重试），应对切后台 / 网络切换导致的瞬时断链。 */
     private val MAX_RETRIES = 2
 
-    private suspend fun runTurn() {
+    private suspend fun runTurn(resumeRunId: String? = null) {
         val base = settings.baseUrl
         val key = settings.apiKey
         val model = settings.model
-        Log.i("RunWatcher", "runTurn start base=${base.take(40)} model=$model configured=${settings.isConfigured()}")
+        Log.i("RunWatcher", "runTurn start base=${base.take(40)} model=$model configured=${settings.isConfigured()} resumeRunId=${resumeRunId ?: "null"}")
         if (!settings.isConfigured()) {
             Log.w("RunWatcher", "Not configured, aborting")
             postSystemMessage("请先在「设置」中填写 API 地址和 Key。")
@@ -174,6 +186,10 @@ class RunWatcherService : Service() {
 
         var attempt = 0
 
+        // 本轮已创建/复用的 runId：普通模式恒为 null；run 模式首轮 createRun 后填值，
+        // 之后（含重试）都复用同一个 runId 重新订阅事件流，而不是再 createRun 产生新任务。
+        var currentRunId: String? = resumeRunId
+
         // 卡死看门狗：若服务端发了 running 等事件后再无后续（无完成事件、无 [DONE]），
         // SSE 连接会因心跳注释一直活着，readUtf8Line 永久阻塞 → isStreaming 卡死。
         // 这里每 15s 检查一次"距上次活动是否超过 STALL_TIMEOUT_MS"，超时则强制收尾。
@@ -200,6 +216,8 @@ class RunWatcherService : Service() {
 
             // 用 CompletableDeferred 等待本轮真正结束（run 模式子协程也覆盖）
             val done = CompletableDeferred<Unit>()
+            // 记录本轮 done，供看门狗 forceFinalize 在完成结算后唤醒 await，避免永久挂起
+            currentDone = done
 
             var succeeded = false
             var approvalEnded = false
@@ -224,26 +242,42 @@ class RunWatcherService : Service() {
                 if (!done.isCompleted) done.complete(Unit)
             }
 
-            val history = buildHistory()
-            Log.i("RunWatcher", "history size=${history.size}, last msg role=${history.lastOrNull()?.role}")
+            // 普通模式每轮都带历史重新请求以补齐全文；run 模式（含续传/重试）复用 runId 订阅，无需再传历史
+            val history = if (currentRunId == null) buildHistory() else emptyList()
+            Log.i("RunWatcher", "history size=${history.size}, last msg role=${history.lastOrNull()?.role}, runId=${currentRunId ?: "null"}")
             try {
                 if (settings.runMode) {
-                    Log.i("RunWatcher", "runMode=true, calling createRun")
-                    api.createRun(
-                        baseUrl = base, apiKey = key, model = model, messages = history,
-                        onRunId = { runId ->
-                            Log.i("RunWatcher", "createRun got runId=$runId")
-                            scope.launch {
-                                api.subscribeRunEvents(
-                                    baseUrl = base, apiKey = key, runId = runId,
-                                    onDelta = onDelta, onThinking = onThinking, onStatus = onStatus,
-                                    onToolProgress = onToolProgress, onApproval = onApproval,
-                                    onDone = onDone, onError = onError
-                                )
-                            }
-                        },
-                        onError = onError
-                    )
+                    val runIdToUse = currentRunId
+                    if (runIdToUse != null) {
+                        // 续传 / 重试：直接订阅服务端仍在跑的同一个 run，不再 createRun（避免产生新任务）
+                        Log.i("RunWatcher", "runMode subscribing existing runId=$runIdToUse (attempt $attempt)")
+                        api.subscribeRunEvents(
+                            baseUrl = base, apiKey = key, runId = runIdToUse,
+                            onDelta = onDelta, onThinking = onThinking, onStatus = onStatus,
+                            onToolProgress = onToolProgress, onApproval = onApproval,
+                            onDone = onDone, onError = onError
+                        )
+                    } else {
+                        Log.i("RunWatcher", "runMode=true, calling createRun (attempt $attempt)")
+                        api.createRun(
+                            baseUrl = base, apiKey = key, model = model, messages = history,
+                            onRunId = { runId ->
+                                Log.i("RunWatcher", "createRun got runId=$runId")
+                                currentRunId = runId // 记录 runId，重试时复用同一 run 重新订阅
+                                // 持久化 runId：App 被杀后下次启动可据此续传
+                                settings.setRunId(assistantId!!, runId)
+                                scope.launch {
+                                    api.subscribeRunEvents(
+                                        baseUrl = base, apiKey = key, runId = runId,
+                                        onDelta = onDelta, onThinking = onThinking, onStatus = onStatus,
+                                        onToolProgress = onToolProgress, onApproval = onApproval,
+                                        onDone = onDone, onError = onError
+                                    )
+                                }
+                            },
+                            onError = onError
+                        )
+                    }
                 } else {
                     Log.i("RunWatcher", "runMode=false, calling streamChat")
                     api.streamChat(
@@ -263,24 +297,32 @@ class RunWatcherService : Service() {
             done.await()
             Log.i("RunWatcher", "done returned (attempt $attempt), succeeded=$succeeded, approvalEnded=$approvalEnded, caught=${caught?.javaClass?.simpleName}")
 
+            // 若已被看门狗强制结算（卡死兜底），直接收尾返回，避免二次结算 / 误重试
+            if (finalized) {
+                Log.i("RunWatcher", "turn already finalized by watchdog, returning")
+                return
+            }
             if (approvalEnded) { Log.i("RunWatcher", "approval ended, returning"); return }
             if (succeeded) { Log.i("RunWatcher", "succeeded, finalizing turn"); finalizeTurn(); return }
 
-            // 已收到部分内容时不再重试——重试会丢弃已有内容且生成全新回复，
-            // 在 Doze 环境下重试大概率再次失败。直接保存已有部分回复。
-            if (buffer.isNotEmpty()) {
-                Log.i("RunWatcher", "Connection lost but buffer has ${buffer.length} chars, saving partial content")
-                finalizeTurn(partialWarning = true)
+            // 判断是否可以重试：瞬时网络错误（切后台 / 网络抖动 / 空流）+ 仍有重试次数 → 重新发起请求补齐全文。
+            // 下一轮 resetBuffers() 会清空 buffer，并用 DB 已落库的半截兜底；
+            // 若新请求成功则用新 buffer 覆盖、失败则回退 DB 半截（finalizeTurn/handleError 已具备该逻辑）。
+            val canRetry = isTransientNetworkError(caught) && attempt < MAX_RETRIES
+
+            if (!canRetry) {
+                // 非瞬时错误（鉴权 / 服务器错误等）或重试耗尽：保存已有部分内容收尾
+                if (buffer.isNotEmpty()) {
+                    Log.i("RunWatcher", "Connection lost but buffer has ${buffer.length} chars, saving partial content")
+                    finalizeTurn(partialWarning = true)
+                } else {
+                    Log.w("RunWatcher", "Non-transient error or exhausted retries: ${caught?.javaClass?.simpleName}: ${caught?.message}")
+                    handleError(caught ?: java.io.IOException("未知错误"))
+                }
                 return
             }
 
-            // 本轮失败：非瞬时错误（鉴权 / 服务器错误等）或重试耗尽 → 真正判失败
-            if (!isTransientNetworkError(caught) || attempt >= MAX_RETRIES) {
-                Log.w("RunWatcher", "Non-transient error or exhausted retries: ${caught?.javaClass?.simpleName}: ${caught?.message}")
-                handleError(caught ?: java.io.IOException("未知错误"))
-                return
-            }
-            // 瞬时网络错误（如 software caused connection abort / 切后台断链）：退避后重试
+            // 瞬时网络错误（如 software caused connection abort / 切后台断链）：退避后重新发起请求补齐全文
             Log.i("RunWatcher", "Transient error, retrying after delay (attempt $attempt)")
             updateNotification("网络中断，正在重连… ($attempt/$MAX_RETRIES)")
             delay(backoffMillis(attempt))
@@ -375,6 +417,9 @@ class RunWatcherService : Service() {
     private fun forceFinalize() {
         Log.w("RunWatcher", "forceFinalize: stall timeout, finalizing turn with partial warning")
         finalizeTurn(partialWarning = true)
+        // 唤醒 runTurn 中阻塞在 done.await() 的协程：看门狗触发说明 SSE 已卡死、finalizeTurn 已保存
+        // 部分内容，runTurn 应在 done 返回后直接收尾，而不是继续等待/误重试（乃至被 callTimeout 再次触发）。
+        currentDone?.let { if (!it.isCompleted) it.complete(Unit) }
     }
 
     /** 把仍停留在 running/started 的工具归一为 completed，避免落库后一直显示"进行中"。 */
@@ -393,6 +438,7 @@ class RunWatcherService : Service() {
         finalized = true
         stallJob?.cancel("finalized")
         val id = assistantId ?: return finishService()
+        settings.clearRunId(id) // 本轮已结算，移除续传标记
         val bufferContent = buffer.toString()
         val reasoning = reasoningBuffer.toString()
         val toolJson = currentToolJsonNormalized(id)
@@ -468,6 +514,7 @@ class RunWatcherService : Service() {
         stallJob?.cancel("finalized")
         approvalHandled = true
         val id = assistantId ?: return
+        settings.clearRunId(id) // 审批终结本轮，移除续传标记
         val bufferContent = buffer.toString()
         val reasoning = reasoningBuffer.toString()
         val toolJson = currentToolJsonNormalized(id)
@@ -518,6 +565,7 @@ class RunWatcherService : Service() {
 
         runBlocking {
             if (id != null) {
+                settings.clearRunId(id)
                 val row = db.messageDao().getById(id)
                 if (row != null) {
                     // buffer 为空时用 DB 已有内容作为 fallback
@@ -536,16 +584,23 @@ class RunWatcherService : Service() {
                     }
                 }
             }
-            // 直接同步插入系统消息（不用 postSystemMessage 的 scope.launch，避免被 cancel）
-            db.messageDao().insert(
-                MessageEntity(
-                    id = UUID.randomUUID().toString(),
-                    conversationId = conversationId!!,
-                    role = MessageEntity.ROLE_SYSTEM,
-                    content = "请求出错：${e.message ?: e.javaClass.simpleName}",
-                    createdAt = System.currentTimeMillis()
+            // 仅当本轮从头到尾没有任何内容时，才插入"请求出错"系统消息。
+            // 若 DB 已有部分内容（例如续传时服务端 run 已结束且事件未重放），直接保留部分内容、不报毒。
+            val hadContent = id != null && run {
+                val r = db.messageDao().getById(id)
+                r != null && (r.content.isNotBlank() || r.reasoning.isNotBlank() || r.toolCallsJson.isNotBlank())
+            }
+            if (!hadContent) {
+                db.messageDao().insert(
+                    MessageEntity(
+                        id = UUID.randomUUID().toString(),
+                        conversationId = conversationId!!,
+                        role = MessageEntity.ROLE_SYSTEM,
+                        content = "请求出错：${e.message ?: e.javaClass.simpleName}",
+                        createdAt = System.currentTimeMillis()
+                    )
                 )
-            )
+            }
         }
         ActiveRunState.reset()
         if (isAppInForeground()) {

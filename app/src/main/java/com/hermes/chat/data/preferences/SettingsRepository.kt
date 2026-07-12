@@ -73,6 +73,23 @@ class SettingsRepository(context: Context) {
     fun isConfigured(): Boolean =
         baseUrl.isNotBlank() && apiKey.isNotBlank()
 
+    // ===== 长运行模式 run id 持久化（供 App 被杀后断线续传） =====
+    // run 在服务端执行，客户端仅订阅事件。被杀后重连同一 runId 即可续上，
+    // 因此必须把 runId 落盘（不能只存在内存）。
+    fun setRunId(assistantId: String, runId: String) =
+        prefs.edit().putString(KEY_RUN_ID + assistantId, runId).apply()
+
+    fun getRunId(assistantId: String): String? =
+        prefs.getString(KEY_RUN_ID + assistantId, null)
+
+    fun clearRunId(assistantId: String) =
+        prefs.edit().remove(KEY_RUN_ID + assistantId).apply()
+
+    /** 是否已向用户弹过"电池优化"提示（避免每次启动都打扰）。 */
+    var batteryPromptShown: Boolean
+        get() = prefs.getBoolean(KEY_BATTERY_PROMPT, false)
+        set(v) = prefs.edit().putBoolean(KEY_BATTERY_PROMPT, v).apply()
+
     companion object {
         const val DEFAULT_MODEL = "hermes-agent"
         private const val PREFS_NAME = "hermes_settings"
@@ -87,6 +104,8 @@ class SettingsRepository(context: Context) {
         private const val KEY_RUN_MODE = "run_mode"
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
         private const val KEY_DRAFT = "draft_"
+        private const val KEY_RUN_ID = "run_id_"
+        private const val KEY_BATTERY_PROMPT = "battery_prompt_shown"
 
         const val MODE_SYSTEM = "system"
         const val MODE_LIGHT = "light"

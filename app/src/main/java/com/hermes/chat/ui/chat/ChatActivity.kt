@@ -9,11 +9,14 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
+import android.view.Menu
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
+import android.util.Log
 import android.widget.Toast
+import android.window.OnBackInvokedDispatcher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -23,6 +26,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.hermes.chat.R
+import com.hermes.chat.HermesApplication
 import com.hermes.chat.data.local.MessageEntity
 import com.hermes.chat.data.model.ToolCall
 import com.hermes.chat.data.preferences.SettingsRepository
@@ -34,10 +38,13 @@ import com.hermes.chat.ui.common.AvatarRole
 import com.hermes.chat.ui.common.copyAvatarToInternal
 import com.hermes.chat.ui.common.showAvatarPicker
 import com.hermes.chat.ui.common.showAvatarRoleChooser
+import com.hermes.chat.ui.conversations.ConversationsActivity
 import com.hermes.chat.ui.settings.SettingsActivity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.UUID
 
 class ChatActivity : AppCompatActivity() {
 
@@ -102,6 +109,10 @@ class ChatActivity : AppCompatActivity() {
         }
 
         viewModel.init(intent.getStringExtra(EXTRA_CONVERSATION_ID))
+
+        // 进入聊天时补做中断流式恢复：点通知/深链直接进聊天时，首页的 recoverInterruptedStreams()
+        // 不会执行，这里复用同样的续传/重发逻辑，保证被中断的长回复能补全（与首页共用 RECOVERY_DONE 守卫）。
+        recoverIfInterrupted()
 
         setSupportActionBar(binding.toolbar)
         binding.toolbar.setNavigationOnClickListener { finish() }
@@ -248,6 +259,26 @@ class ChatActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.runMode.collect { updateRunModeMenuItem() }
         }
+
+        // Android 13+（API 33+，API 35/36 默认开启 predictive back）系统返回手势/按钮走
+        // OnBackInvokedDispatcher，仅重写 onBackPressed() 在手势导航下不可靠。这里注册
+        // OnBackInvokedCallback，保证 Android 16 上返回手势/按钮都能回首页，斜杠面板展开时先收起。
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT
+            ) {
+                if (binding.layoutSlashInline.visibility == View.VISIBLE) {
+                    hideSlashInline()
+                } else {
+                    finish()
+                }
+            }
+        }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.chat_menu, menu)
+        return true
     }
 
     override fun onPause() {
@@ -265,21 +296,113 @@ class ChatActivity : AppCompatActivity() {
     }
 
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
-        if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK) {
-            if (event.action == android.view.KeyEvent.ACTION_UP) {
-                if (binding.layoutSlashInline.visibility == View.VISIBLE) {
-                    hideSlashInline()
-                    return true
+        // 不再在此拦截 KEYCODE_BACK：vivo/OriginOS 等手势导航机型上系统返回手势不生成
+        // KEYCODE_BACK，而是走 onBackPressed 派发；自行吞掉 BACK 键还会干扰系统返回手势识别，
+        // 导致返回失效。统一交回 super 处理，返回键逻辑统一见 onBackPressed()。
+        return super.dispatchKeyEvent(event)
+    }
+
+    /**
+     * 系统返回手势 / 返回按钮统一在此处理（API 33+ 手势导航同样走这里）：
+     * - 若内联斜杠命令面板正展开，则只收起面板、消费本次返回（不退出界面）；
+     * - 否则调用 super 默认行为（finish 当前 Activity，回到 ConversationsActivity 首页）。
+     * 顶部工具栏返回箭头见 onCreate 中的 setNavigationOnClickListener { finish() }，保持不变。
+     */
+    @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
+    override fun onBackPressed() {
+        if (binding.layoutSlashInline.visibility == View.VISIBLE) {
+            hideSlashInline()
+            return
+        }
+        super.onBackPressed()
+    }
+
+    /**
+     * 进入聊天界面时的中断流式恢复：点通知/深链直接进聊天时，首页 ConversationsActivity 的
+     * recoverInterruptedStreams() 不会执行，这里补上同样的逻辑，保证被中断的长回复能补全。
+     *
+     * 仅处理「当前会话」残留的 isStreaming=true 助手占位（过滤 conversationId == 当前 cid）：
+     * - 长运行模式且有持久化 runId：用既有 runId 续传，把被中断的回复补全；
+     * - 其余：删残留半截占位、新建"进行中"占位（复用库里原 user 消息，不重复插入）、
+     *   拉起 RunWatcherService 重新拉取完整回复。
+     *
+     * 与首页共用 ConversationsActivity.RECOVERY_DONE 守卫（进程内仅触发一次），避免重复重发；
+     * 若首页已先恢复过，这里直接跳过（守卫已置位）。
+     */
+    private fun recoverIfInterrupted() {
+        if (ConversationsActivity.RECOVERY_DONE.getAndSet(true)) return
+        val cid = intent.getStringExtra(EXTRA_CONVERSATION_ID) ?: return
+        if (isServiceRunning()) return // Service 仍在跑，无需续传
+        val db = (application as HermesApplication).database
+        lifecycleScope.launch(Dispatchers.IO) {
+            val stalled = db.messageDao().getStreamingAssistants()
+                .filter { it.conversationId == cid }
+            if (stalled.isEmpty()) return@launch
+            for (m in stalled) {
+                val runId = settings.getRunId(m.id)
+                if (runId != null && settings.runMode) {
+                    Log.i("ChatActivity", "resuming interrupted run msg=${m.id} runId=$runId")
+                    val intent = Intent(this@ChatActivity, RunWatcherService::class.java).apply {
+                        putExtra(RunWatcherService.EXTRA_CONVERSATION_ID, m.conversationId)
+                        putExtra(RunWatcherService.EXTRA_ASSISTANT_ID, m.id)
+                        putExtra(RunWatcherService.EXTRA_RESUME, true)
+                        putExtra(RunWatcherService.EXTRA_RUN_ID, runId)
+                    }
+                    ContextCompat.startForegroundService(this@ChatActivity, intent)
+                } else {
+                    // 非 run 模式 / 无 runId：删除残留半截占位，用最后一条 user 消息重发以补齐完整回复
+                    Log.i("ChatActivity", "re-triggering interrupted turn for msg=${m.id} (runMode=${settings.runMode}, runId=$runId)")
+                    resendLastUserTurn(m)
                 }
-                binding.editInput.clearFocus()
-                finish()
-                return true
-            }
-            if (event.action == android.view.KeyEvent.ACTION_DOWN) {
-                return true
             }
         }
-        return super.dispatchKeyEvent(event)
+    }
+
+    /**
+     * 重新触发某条被中断（isStreaming 残留）的助手回复：
+     * 删除残留的半截助手占位，找到同一会话里最后一条 user 消息作为上下文，
+     * 新建一条"进行中"助手占位并拉起 RunWatcherService 重新拉取完整回复。
+     * 不重复插入 user 消息——原 user 消息仍在库中，RunWatcherService.buildHistory 会复用它。
+     */
+    private suspend fun resendLastUserTurn(m: MessageEntity) {
+        val db = (application as HermesApplication).database
+        // 取该会话全部消息，定位 stalled 助手之前的最后一条 user 消息
+        val msgs = db.messageDao().getByConversation(m.conversationId).first()
+        val userMsg = msgs.lastOrNull { it.role == MessageEntity.ROLE_USER }
+        if (userMsg == null) {
+            // 找不到对应 user 消息，无法重发，仅把残留占位置为已结束，避免永久"处理中"
+            Log.w("ChatActivity", "no user message before stalled msg=${m.id}, just clearing placeholder")
+            db.messageDao().update(m.copy(isStreaming = false))
+            return
+        }
+        // 删除残留在半截的助手占位（避免重复/错位），稍后由全新一轮重新生成完整回复
+        db.messageDao().deleteById(m.id)
+        // 新建"进行中"助手占位，复用原 user 消息（不重复插入），由 Service 重新拉取完整回复
+        val newAssistantId = UUID.randomUUID().toString()
+        db.messageDao().insert(
+            MessageEntity(
+                id = newAssistantId,
+                conversationId = m.conversationId,
+                role = MessageEntity.ROLE_ASSISTANT,
+                content = "",
+                createdAt = System.currentTimeMillis(),
+                isStreaming = true
+            )
+        )
+        ActiveRunState.begin(newAssistantId)
+        val intent = Intent(this@ChatActivity, RunWatcherService::class.java).apply {
+            putExtra(RunWatcherService.EXTRA_CONVERSATION_ID, m.conversationId)
+            putExtra(RunWatcherService.EXTRA_ASSISTANT_ID, newAssistantId)
+        }
+        ContextCompat.startForegroundService(this@ChatActivity, intent)
+    }
+
+    /** 是否已有 RunWatcherService 在运行（避免重复续传）。 */
+    private fun isServiceRunning(): Boolean {
+        val mgr = getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        @Suppress("DEPRECATION")
+        return mgr.getRunningServices(Int.MAX_VALUE)
+            .any { it.service.className == RunWatcherService::class.java.name }
     }
 
     /** 检查用户是否在列表底部（用于判断回到底部按钮的显隐） */
