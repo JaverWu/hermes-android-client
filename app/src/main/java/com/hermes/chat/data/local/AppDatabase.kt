@@ -65,7 +65,12 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "hermes_chat.db"
-                ).addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4).build()
+                )
+                    // 后端迁移链完整时不会触发；万一未来漏写某段 Migration，
+                    // 仅清本地库而非崩溃（聊天记录本地副本，崩比丢更糟）。
+                    .fallbackToDestructiveMigration()
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .build()
                 INSTANCE = instance
                 instance
             }
