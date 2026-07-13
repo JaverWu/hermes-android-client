@@ -47,10 +47,8 @@ fun showAvatarPicker(
                 layoutParams = LinearLayout.LayoutParams(size, size).apply {
                     setMargins(dp(ctx, 10), dp(ctx, 10), dp(ctx, 10), dp(ctx, 10))
                 }
-                background = ContextCompat.getDrawable(ctx, R.drawable.bg_circle_blue)
-                backgroundTintList = android.content.res.ColorStateList.valueOf(
-                    ContextCompat.getColor(ctx, preset.colorRes)
-                )
+                background = ContextCompat.getDrawable(ctx, preset.gradientRes)
+                backgroundTintList = null
                 val selected = idx == currentIndex
                 scaleX = if (selected) 1.12f else 1f
                 scaleY = if (selected) 1.12f else 1f

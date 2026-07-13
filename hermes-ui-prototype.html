@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hermes · 对话界面设计方案</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   HERMES DESIGN TOKENS  —  OKLCH, tinted neutrals, single accent
+   ============================================================ */
+:root{
+  /* ---- Brand / accent (Telegram-inspired blue, refined) ---- */
+  --primary:        oklch(60% 0.20 257);
+  --primary-hover:  oklch(54% 0.20 257);
+  --primary-press:  oklch(48% 0.19 257);
+  --primary-soft:   oklch(95% 0.04 257);
+
+  /* ---- Semantic ---- */
+  --success: oklch(64% 0.16 150);
+  --warning: oklch(76% 0.15 75);
+  --error:   oklch(58% 0.21 25);
+  --unread:  oklch(52% 0.23 25);
+
+  /* ---- Neutral scale: cool-tinted toward brand hue (no pure gray) ---- */
+  --bg:          oklch(98.5% 0.005 260);
+  --surface:     oklch(100% 0 0);
+  --surface-2:   oklch(97% 0.006 260);
+  --surface-3:   oklch(94% 0.008 260);
+  --border:      oklch(91% 0.010 260);
+  --border-strong: oklch(84% 0.012 260);
+  --text-1:      oklch(22% 0.020 260);
+  --text-2:      oklch(45% 0.020 260);
+  --text-3:      oklch(62% 0.018 260);
+
+  /* ---- Chat bubbles ---- */
+  --bubble-in:   oklch(95% 0.008 260);
+  --bubble-out:  var(--primary);
+  --bubble-out-text: oklch(100% 0 0);
+
+  /* ---- Glass tab bar ---- */
+  --glass-bg:    oklch(100% 0 0 / 0.62);
+  --glass-stroke: oklch(100% 0 0 / 0.7);
+  --glass-shadow: 0 8px 30px -6px oklch(40% 0.05 260 / 0.28);
+
+  /* ---- Typography (one distinctive, highly readable family) ---- */
+  --font: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --t-xs:   0.75rem;
+  --t-sm:   0.8125rem;
+  --t-base: 0.9375rem;
+  --t-md:   1.0625rem;
+  --t-lg:   1.25rem;
+  --t-xl:   1.625rem;
+  --t-2xl:  2.125rem;
+
+  /* ---- Spacing (4px base rhythm) ---- */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px;
+  --s5: 20px; --s6: 24px; --s8: 32px; --s10: 40px; --s12: 48px;
+
+  /* ---- Radius ---- */
+  --r-sm: 10px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px; --r-full: 999px;
+
+  /* ---- Elevation ---- */
+  --elev-1: 0 1px 2px oklch(40% 0.05 260 / 0.06), 0 1px 3px oklch(40% 0.05 260 / 0.08);
+  --elev-2: 0 4px 12px oklch(40% 0.05 260 / 0.10);
+  --elev-3: 0 12px 32px oklch(40% 0.05 260 / 0.14);
+}
+
+:root[data-theme="dark"]{
+  --bg:          oklch(16% 0.012 260);
+  --surface:     oklch(20.5% 0.013 260);
+  --surface-2:   oklch(24% 0.014 260);
+  --surface-3:   oklch(28% 0.015 260);
+  --border:      oklch(31% 0.014 260);
+  --border-strong: oklch(38% 0.015 260);
+  --text-1:      oklch(95% 0.004 260);
+  --text-2:      oklch(73% 0.015 260);
+  --text-3:      oklch(56% 0.015 260);
+
+  --primary:     oklch(68% 0.17 257);   /* slightly desaturated for dark */
+  --primary-hover: oklch(72% 0.17 257);
+  --primary-press: oklch(62% 0.17 257);
+  --primary-soft: oklch(28% 0.06 257);
+
+  --bubble-in:   oklch(27% 0.016 260);
+  --bubble-out:  var(--primary);
+
+  --glass-bg:    oklch(22% 0.013 260 / 0.55);
+  --glass-stroke: oklch(100% 0 0 / 0.12);
+  --glass-shadow: 0 8px 30px -6px oklch(0% 0 0 / 0.5);
+  --elev-1: 0 1px 2px oklch(0% 0 0 / 0.4);
+  --elev-2: 0 4px 12px oklch(0% 0 0 / 0.45);
+  --elev-3: 0 12px 32px oklch(0% 0 0 / 0.55);
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+html{ -webkit-text-size-adjust:100%; }
+@media (prefers-reduced-motion: reduce){
+  .searchbar, .tab .fab, .send-fab, .typing i{ transition-duration:.001ms !important; animation-duration:.001ms !important; }
+}
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text-1);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  transition:background .4s ease, color .4s ease;
+}
+.wrap{ max-width:1120px; margin:0 auto; padding:var(--s12) var(--s6) var(--s12); }
+
+/* ============ Page hero ============ */
+.hero{
+  display:flex; align-items:flex-end; justify-content:space-between;
+  gap:var(--s6); flex-wrap:wrap; margin-bottom:var(--s10);
+}
+.hero h1{
+  font-size:var(--t-2xl); font-weight:800; letter-spacing:-0.02em;
+  line-height:1.05;
+}
+.hero p{ color:var(--text-2); margin-top:var(--s3); max-width:46ch; font-size:var(--t-md); }
+.brandmark{
+  display:inline-flex; align-items:center; gap:var(--s2);
+  font-weight:700; color:var(--primary);
+}
+.brandmark .dot{
+  width:34px; height:34px; border-radius:var(--r-md);
+  background:linear-gradient(140deg, var(--primary), oklch(55% 0.18 280));
+  display:grid; place-items:center; color:#fff; font-weight:800; box-shadow:var(--elev-2);
+}
+.theme-toggle{
+  display:inline-flex; align-items:center; gap:var(--s2);
+  padding:var(--s2) var(--s4); border:1px solid var(--border);
+  border-radius:var(--r-full); background:var(--surface); color:var(--text-1);
+  font-family:var(--font); font-weight:600; font-size:var(--t-sm); cursor:pointer;
+  box-shadow:var(--elev-1); transition:transform .15s ease, border-color .2s;
+}
+.theme-toggle:hover{ transform:translateY(-1px); border-color:var(--border-strong); }
+.theme-toggle:active{ transform:translateY(0); }
+
+/* ============ Section scaffolding ============ */
+.section{ margin-top:var(--s12); }
+.section-head{ margin-bottom:var(--s6); }
+.section-head .kicker{
+  font-size:var(--t-xs); font-weight:700; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--primary);
+}
+.section-head h2{ font-size:var(--t-xl); font-weight:800; letter-spacing:-0.01em; margin-top:var(--s2); }
+.section-head p{ color:var(--text-2); margin-top:var(--s2); max-width:60ch; }
+
+/* ============ Token panels ============ */
+.token-grid{ display:grid; gap:var(--s5); grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
+.panel{
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); padding:var(--s5); box-shadow:var(--elev-1);
+}
+.panel h3{ font-size:var(--t-sm); font-weight:700; color:var(--text-2); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:var(--s4); }
+
+/* color swatches */
+.sw-row{ display:flex; align-items:center; gap:var(--s3); padding:var(--s2) 0; }
+.swatch{ width:34px; height:34px; border-radius:var(--r-sm); border:1px solid var(--border); flex:none; }
+.sw-meta{ display:flex; flex-direction:column; line-height:1.25; }
+.sw-meta b{ font-size:var(--t-sm); font-weight:600; }
+.sw-meta span{ font-size:var(--t-xs); color:var(--text-3); font-variant-numeric:tabular-nums; }
+
+/* type scale */
+.type-row{ padding:var(--s2) 0; border-bottom:1px dashed var(--border); display:flex; align-items:baseline; gap:var(--s4); }
+.type-row:last-child{ border-bottom:none; }
+.type-row .tag{ font-size:var(--t-xs); color:var(--text-3); width:54px; flex:none; font-variant-numeric:tabular-nums; }
+.type-row .sample{ color:var(--text-1); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* spacing bars */
+.sp-row{ display:flex; align-items:center; gap:var(--s3); padding:var(--s1) 0; }
+.sp-bar{ height:14px; background:var(--primary); border-radius:var(--r-sm); opacity:.85; }
+
+/* ============ Phone showcase ============ */
+.showcase{
+  display:grid; grid-template-columns:minmax(320px, 380px) 1fr; gap:var(--s12);
+  align-items:start;
+}
+@media (max-width: 880px){ .showcase{ grid-template-columns:1fr; } }
+
+.phone{
+  width:100%; max-width:380px; aspect-ratio:375/812;
+  background:var(--surface); border:1px solid var(--border-strong);
+  border-radius:46px; padding:14px; box-shadow:var(--elev-3);
+  position:sticky; top:var(--s6); margin:0 auto;
+}
+.screen{
+  width:100%; height:100%; border-radius:34px; overflow:hidden;
+  background:var(--bg); display:flex; flex-direction:column; position:relative;
+}
+/* status bar */
+.statusbar{
+  height:30px; display:flex; align-items:center; justify-content:space-between;
+  padding:0 var(--s5); font-size:var(--t-xs); font-weight:600; color:var(--text-1);
+  flex:none;
+}
+.statusbar .icons{ display:flex; gap:6px; align-items:center; }
+.statusbar svg{ display:block; }
+
+/* app top bar */
+.appbar{
+  height:56px; flex:none; display:flex; align-items:center; gap:var(--s3);
+  padding:0 var(--s4); border-bottom:1px solid var(--border); background:var(--surface);
+}
+.appbar .title{ font-size:var(--t-md); font-weight:700; letter-spacing:-0.01em; }
+.appbar .spacer{ flex:1; }
+.icon-btn{
+  width:40px; height:40px; border-radius:var(--r-full); border:none; cursor:pointer;
+  background:transparent; color:var(--text-1); display:grid; place-items:center;
+  transition:background .15s ease;
+}
+.icon-btn:hover{ background:var(--surface-2); }
+.icon-btn:active{ background:var(--surface-3); }
+
+/* search — smooth bezier (ease-out-quint) expand, no abrupt show/hide */
+.searchbar{
+  margin:0 var(--s4); height:42px; border-radius:var(--r-full);
+  background:var(--surface-2); display:flex; align-items:center; gap:var(--s2);
+  padding:0 var(--s4); color:var(--text-3); font-size:var(--t-sm); flex:none;
+  border:1px solid transparent;
+  opacity:0; transform:translateY(-10px) scale(.97); transform-origin:top center;
+  max-height:0; overflow:hidden; pointer-events:none;
+  transition:opacity .36s cubic-bezier(0.22,1,0.36,1),
+             transform .36s cubic-bezier(0.22,1,0.36,1),
+             max-height .36s cubic-bezier(0.22,1,0.36,1),
+             margin .36s cubic-bezier(0.22,1,0.36,1),
+             border-color .2s;
+}
+.searchbar.open{
+  opacity:1; transform:none; max-height:64px; margin:var(--s3) var(--s4); pointer-events:auto;
+}
+.searchbar svg{ flex:none; }
+.searchbar input{
+  border:none; background:transparent; outline:none; font-family:var(--font);
+  font-size:var(--t-sm); color:var(--text-1); width:100%;
+}
+.searchbar input::placeholder{ color:var(--text-3); }
+
+/* conversation list */
+.list{ flex:1; overflow-y:auto; }
+.chat-item{
+  display:flex; align-items:center; gap:var(--s3); padding:var(--s3) var(--s4);
+  border-bottom:1px solid var(--border); cursor:pointer; transition:background .15s;
+}
+.chat-item:hover{ background:var(--surface-2); }
+.chat-item:active{ background:var(--surface-3); }
+.avatar{
+  width:50px; height:50px; border-radius:var(--r-full); flex:none;
+  display:grid; place-items:center; color:#fff; font-weight:700; font-size:var(--t-md);
+  box-shadow:var(--elev-1);
+}
+/* Avatars: analogous (adjacent-hue) gradients — never flat single color */
+.av-1{ background:linear-gradient(135deg, oklch(64% 0.17 18),  oklch(60% 0.17 48)); }
+.av-2{ background:linear-gradient(135deg, oklch(62% 0.16 150), oklch(60% 0.16 182)); }
+.av-3{ background:linear-gradient(135deg, oklch(60% 0.20 250), oklch(63% 0.18 282)); }
+.av-4{ background:linear-gradient(135deg, oklch(63% 0.16 300), oklch(60% 0.16 332)); }
+.av-5{ background:linear-gradient(135deg, oklch(68% 0.15 72),  oklch(62% 0.16 102)); }
+.av-6{ background:linear-gradient(135deg, oklch(64% 0.14 188), oklch(60% 0.18 220)); }
+.ci-body{ flex:1; min-width:0; }
+.ci-top{ display:flex; align-items:baseline; gap:var(--s2); }
+.ci-name{ font-weight:600; font-size:var(--t-base); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ci-time{ margin-left:auto; font-size:var(--t-xs); color:var(--text-3); flex:none; font-variant-numeric:tabular-nums; }
+.ci-preview{ display:flex; align-items:center; gap:var(--s2); margin-top:2px; }
+.ci-preview span{ font-size:var(--t-sm); color:var(--text-2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.badge, .ci-preview .badge{
+  margin-left:auto; flex:none; min-width:22px; height:22px; padding:0 6px;
+  border-radius:var(--r-full); background:var(--unread); color:#fff;
+  font-size:var(--t-xs); font-weight:700; display:grid; place-items:center;
+}
+.badge.muted{ background:oklch(64% 0.012 260); color:#fff; }
+
+/* chat screen */
+.chat-scroll{ flex:1; overflow-y:auto; padding:var(--s4) var(--s4) var(--s2); display:flex; flex-direction:column; gap:var(--s3); }
+.day-sep{ align-self:center; font-size:var(--t-xs); font-weight:600; color:var(--text-3); background:var(--surface-2); padding:4px 12px; border-radius:var(--r-full); }
+.msg{ max-width:78%; padding:var(--s3) var(--s4); font-size:var(--t-base); line-height:1.4; position:relative; }
+.msg .meta{ font-size:10px; color:var(--text-3); margin-top:4px; text-align:right; font-variant-numeric:tabular-nums; }
+.msg.in{ align-self:flex-start; background:var(--bubble-in); color:var(--text-1); border-radius:var(--r-lg) var(--r-lg) var(--r-lg) 6px; }
+.msg.out{ align-self:flex-end; background:var(--bubble-out); color:var(--bubble-out-text); border-radius:var(--r-lg) var(--r-lg) 6px var(--r-lg); }
+.msg.out .meta{ color:oklch(100% 0 0 / 0.7); }
+.typing{ align-self:flex-start; display:flex; gap:4px; padding:var(--s4) var(--s5); background:var(--bubble-in); border-radius:var(--r-lg) var(--r-lg) var(--r-lg) 6px; }
+.typing i{ width:7px; height:7px; border-radius:var(--r-full); background:var(--text-3); animation:blink 1.2s infinite both; }
+.typing i:nth-child(2){ animation-delay:.2s; } .typing i:nth-child(3){ animation-delay:.4s; }
+@keyframes blink{ 0%,60%,100%{ opacity:.3; transform:translateY(0);} 30%{ opacity:1; transform:translateY(-3px);} }
+
+/* input bar */
+.inputbar{
+  flex:none; margin:var(--s3) var(--s3) var(--s2); display:flex; align-items:center; gap:var(--s2);
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-full);
+  padding:6px 6px 6px var(--s2); box-shadow:var(--elev-1);
+}
+.inputbar input{ flex:1; border:none; outline:none; font-family:var(--font); font-size:var(--t-base); color:var(--text-1); background:transparent; padding:0 var(--s2); }
+.inputbar input::placeholder{ color:var(--text-3); }
+.send-fab{
+  width:42px; height:42px; border-radius:var(--r-full); border:none; cursor:pointer; flex:none;
+  background:var(--primary); color:#fff; display:grid; place-items:center;
+  box-shadow:var(--elev-2); transition:transform .15s ease, background .2s;
+}
+.send-fab:hover{ background:var(--primary-hover); transform:scale(1.05); }
+.send-fab:active{ background:var(--primary-press); transform:scale(.96); }
+
+/* settings */
+.profile{
+  display:flex; align-items:center; gap:var(--s4); padding:var(--s6) var(--s4) var(--s4);
+}
+.profile .avatar{ width:64px; height:64px; font-size:var(--t-lg); }
+.profile .p-name{ font-size:var(--t-md); font-weight:700; }
+.profile .p-sub{ font-size:var(--t-sm); color:var(--text-2); }
+.set-card{ margin:var(--s4); background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); overflow:hidden; }
+.set-row{ display:flex; align-items:center; gap:var(--s3); padding:var(--s4); border-bottom:1px solid var(--border); cursor:pointer; transition:background .15s; }
+.set-row:last-child{ border-bottom:none; }
+.set-row:hover{ background:var(--surface-2); }
+.set-ico{ width:38px; height:38px; border-radius:var(--r-sm); background:var(--primary-soft); color:var(--primary); display:grid; place-items:center; flex:none; }
+.set-row .s-label{ font-weight:600; font-size:var(--t-base); }
+.set-row .s-sub{ font-size:var(--t-xs); color:var(--text-3); }
+.set-row .chev{ margin-left:auto; color:var(--text-3); }
+
+/* glass floating tab bar */
+.tabbar-wrap{ position:absolute; left:0; right:0; bottom:0; padding:var(--s4); display:flex; justify-content:center; pointer-events:none; }
+.tabbar{
+  pointer-events:auto; width:100%; max-width:340px;
+  display:flex; align-items:center; justify-content:space-around;
+  padding:10px; border-radius:var(--r-xl);
+  background:var(--glass-bg); backdrop-filter:blur(22px) saturate(160%);
+  -webkit-backdrop-filter:blur(22px) saturate(160%);
+  border:1px solid var(--glass-stroke); box-shadow:var(--glass-shadow);
+}
+.tab{
+  border:none; background:transparent; cursor:pointer; color:var(--text-2);
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  font-family:var(--font); font-size:10px; font-weight:600; padding:4px 14px; border-radius:var(--r-md);
+  transition:color .2s;
+}
+.tab.active{ color:var(--primary); }
+.tab .fab{
+  width:48px; height:48px; border-radius:var(--r-full); background:var(--primary); color:#fff;
+  display:grid; place-items:center; margin-top:-22px; box-shadow:var(--elev-2);
+  transition:transform .15s ease, background .2s;
+}
+.tab .fab:hover{ background:var(--primary-hover); transform:translateY(-2px); }
+.tab .fab:active{ transform:translateY(0) scale(.96); }
+
+/* screen switching */
+.screen-view{ display:none; flex:1; flex-direction:column; min-height:0; }
+.screen-view.active{ display:flex; }
+
+/* ============ Component spec ============ */
+.comp-grid{ display:grid; gap:var(--s5); grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }
+.comp{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:var(--s5); box-shadow:var(--elev-1); }
+.comp h3{ font-size:var(--t-sm); font-weight:700; color:var(--text-2); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:var(--s4); }
+.row{ display:flex; align-items:center; gap:var(--s3); flex-wrap:wrap; }
+.btn{
+  font-family:var(--font); font-weight:600; font-size:var(--t-base); cursor:pointer;
+  border-radius:var(--r-md); padding:var(--s3) var(--s5); border:1px solid transparent; transition:all .15s ease;
+}
+.btn.primary{ background:var(--primary); color:#fff; }
+.btn.primary:hover{ background:var(--primary-hover); }
+.btn.ghost{ background:var(--surface-2); color:var(--text-1); border-color:var(--border); }
+.btn.ghost:hover{ background:var(--surface-3); }
+.btn:focus-visible{ outline:2px solid var(--primary); outline-offset:2px; }
+.chip{ font-size:var(--t-xs); font-weight:600; padding:4px 10px; border-radius:var(--r-full); background:var(--primary-soft); color:var(--primary); }
+
+.note{ margin-top:var(--s5); padding:var(--s4) var(--s5); border-left:3px solid var(--primary); background:var(--primary-soft); border-radius:0 var(--r-md) var(--r-md) 0; color:var(--text-1); font-size:var(--t-sm); }
+.a11y-list{ list-style:none; display:grid; gap:var(--s3); grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); }
+.a11y-list li{ display:flex; gap:var(--s3); align-items:flex-start; font-size:var(--t-sm); color:var(--text-2); }
+.a11y-list .ck{ width:22px; height:22px; border-radius:var(--r-full); background:var(--success); color:#fff; display:grid; place-items:center; flex:none; font-size:12px; font-weight:700; }
+
+footer{ margin-top:var(--s12); padding-top:var(--s6); border-top:1px solid var(--border); color:var(--text-3); font-size:var(--t-xs); display:flex; justify-content:space-between; flex-wrap:wrap; gap:var(--s3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===================== HERO ===================== -->
+  <header class="hero">
+    <div>
+      <div class="brandmark"><span class="dot">H</span> Hermes</div>
+      <h1>对话界面设计方案</h1>
+      <p>参考 Telegram 的交互习惯，结合原生质感重新设计的简洁聊天界面。美观、易用、符合直觉。</p>
+    </div>
+    <button class="theme-toggle" id="themeBtn" aria-label="切换主题">
+      <span id="themeIcon">🌙</span><span id="themeLabel">深色模式</span>
+    </button>
+  </header>
+
+  <!-- ===================== DESIGN SYSTEM ===================== -->
+  <section class="section">
+    <div class="section-head">
+      <div class="kicker">Foundations</div>
+      <h2>设计系统</h2>
+      <p>以 OKLCH 构建的色彩体系、单一品牌强调色、冷调中性灰（不依赖纯黑纯白），以及一套有节奏感的间距与字号。所有 token 已适配浅色 / 深色双主题。</p>
+    </div>
+
+    <div class="token-grid">
+      <!-- Color -->
+      <div class="panel">
+        <h3>颜色 Color</h3>
+        <div class="sw-row"><div class="swatch" style="background:var(--primary)"></div><div class="sw-meta"><b>Primary</b><span id="c-primary"></span></div></div>
+        <div class="sw-row"><div class="swatch" style="background:var(--bubble-in)"></div><div class="sw-meta"><b>Bubble In</b><span id="c-in"></span></div></div>
+        <div class="sw-row"><div class="swatch" style="background:var(--surface-2)"></div><div class="sw-meta"><b>Surface 2</b><span id="c-s2"></span></div></div>
+        <div class="sw-row"><div class="swatch" style="background:var(--text-1)"></div><div class="sw-meta"><b>Text 1</b><span id="c-t1"></span></div></div>
+        <div class="sw-row"><div class="swatch" style="background:var(--unread)"></div><div class="sw-meta"><b>Unread</b><span id="c-un"></span></div></div>
+        <div class="sw-row"><div class="swatch" style="background:var(--success)"></div><div class="sw-meta"><b>Success</b><span id="c-ok"></span></div></div>
+      </div>
+
+      <!-- Typography -->
+      <div class="panel">
+        <h3>字体 Typography</h3>
+        <div style="font-weight:800;font-size:var(--t-md);margin-bottom:var(--s3)">Plus Jakarta Sans</div>
+        <div class="type-row"><span class="tag">Display</span><span class="sample" style="font-size:var(--t-lg);font-weight:800">对话 · Hermes</span></div>
+        <div class="type-row"><span class="tag">Title</span><span class="sample" style="font-size:var(--t-md);font-weight:700">会话列表</span></div>
+        <div class="type-row"><span class="tag">Body</span><span class="sample" style="font-size:var(--t-base)">今天天气不错，去散步吧</span></div>
+        <div class="type-row"><span class="tag">Meta</span><span class="sample" style="font-size:var(--t-xs);color:var(--text-3)">14:32 · 已读</span></div>
+      </div>
+
+      <!-- Spacing -->
+      <div class="panel">
+        <h3>间距 Spacing · 4px</h3>
+        <div class="sp-row"><div class="sp-bar" style="width:8px"></div><span style="font-size:var(--t-xs);color:var(--text-3)">8</span></div>
+        <div class="sp-row"><div class="sp-bar" style="width:16px"></div><span style="font-size:var(--t-xs);color:var(--text-3)">16</span></div>
+        <div class="sp-row"><div class="sp-bar" style="width:24px"></div><span style="font-size:var(--t-xs);color:var(--text-3)">24</span></div>
+        <div class="sp-row"><div class="sp-bar" style="width:32px"></div><span style="font-size:var(--t-xs);color:var(--text-3)">32</span></div>
+        <div class="sp-row"><div class="sp-bar" style="width:48px"></div><span style="font-size:var(--t-xs);color:var(--text-3)">48</span></div>
+      </div>
+
+      <!-- Radius / Elevation -->
+      <div class="panel">
+        <h3>圆角 & 阴影</h3>
+        <div class="row" style="margin-bottom:var(--s4)">
+          <div style="width:54px;height:54px;background:var(--primary-soft);border-radius:var(--r-sm)"></div>
+          <div style="width:54px;height:54px;background:var(--primary-soft);border-radius:var(--r-md)"></div>
+          <div style="width:54px;height:54px;background:var(--primary-soft);border-radius:var(--r-lg)"></div>
+          <div style="width:54px;height:54px;background:var(--primary-soft);border-radius:var(--r-full)"></div>
+        </div>
+        <div class="row">
+          <div style="width:54px;height:54px;background:var(--surface);border-radius:var(--r-md);box-shadow:var(--elev-1)"></div>
+          <div style="width:54px;height:54px;background:var(--surface);border-radius:var(--r-md);box-shadow:var(--elev-2)"></div>
+          <div style="width:54px;height:54px;background:var(--surface);border-radius:var(--r-md);box-shadow:var(--elev-3)"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SCREENS ===================== -->
+  <section class="section">
+    <div class="section-head">
+      <div class="kicker">Prototype</div>
+      <h2>核心界面原型</h2>
+      <p>点击底部玻璃标签栏中间的蓝色圆形「＋」按钮，体验 <b>macOS 式神奇缩放</b>——它会放大并延展成一个全新会话；点击列表项可带头像进入对应对话；搜索图标用 <b>贝塞尔曲线</b>平滑展开。右上角可切换浅色 / 深色主题，所有界面实时联动。</p>
+    </div>
+
+    <div class="showcase">
+      <!-- phone -->
+      <div class="phone">
+        <div class="screen">
+          <div class="statusbar">
+            <span>9:41</span>
+            <span class="icons">
+              <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="4.5" width="3" height="6.5" rx="1"/><rect x="9" y="2" width="3" height="9" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg>
+              <svg width="16" height="11" viewBox="0 0 16 11" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M1 4.2C4.5 1 11.5 1 15 4.2M3.5 6.6C5.7 5 10.3 5 12.5 6.6M6 9C7 8.3 9 8.3 10 9" stroke-linecap="round"/></svg>
+              <svg width="24" height="12" viewBox="0 0 24 12" fill="currentColor"><rect x="1" y="1.5" width="19" height="9" rx="2.5"/><rect x="2.5" y="3" width="14" height="6" rx="1"/><rect x="21" y="4" width="2" height="4" rx="1"/></svg>
+            </span>
+          </div>
+
+          <!-- VIEW: chats -->
+          <div class="screen-view active" id="view-chats">
+            <div class="appbar">
+              <span class="title">Hermes</span>
+              <span class="spacer"></span>
+              <button class="icon-btn" aria-label="搜索" id="searchToggle">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg>
+              </button>
+              <button class="icon-btn" aria-label="更多">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>
+              </button>
+            </div>
+            <div class="searchbar" id="searchBar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4" stroke-linecap="round"/></svg>
+              <input placeholder="搜索对话" id="searchInput" />
+            </div>
+            <div class="list" id="chatList">
+              <!-- items injected -->
+            </div>
+            <div class="tabbar-wrap">
+              <nav class="tabbar" aria-label="主导航">
+                <button class="tab active" data-view="chats">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H8l-4 4z" stroke-linejoin="round"/></svg>
+                  对话
+                </button>
+                <button class="tab" data-view="new">
+                  <span class="fab">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                  </span>
+                </button>
+                <button class="tab" data-view="settings">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 00-2-1.2L16.2 2h-4l-.4 2.5a7 7 0 00-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 002 1.2l.4 2.5h4l.4-2.5a7 7 0 002-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z" stroke-linejoin="round"/></svg>
+                  设置
+                </button>
+              </nav>
+            </div>
+          </div>
+
+          <!-- VIEW: chat thread -->
+          <div class="screen-view" id="view-thread">
+            <div class="appbar">
+              <button class="icon-btn" aria-label="返回" id="backBtn">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+              </button>
+              <div class="avatar av-1" id="threadAvatar" style="width:38px;height:38px;font-size:var(--t-sm)">设</div>
+              <div style="display:flex;flex-direction:column;line-height:1.2">
+                <span style="font-weight:700;font-size:var(--t-base)" id="threadName">系统通知</span>
+                <span style="font-size:var(--t-xs);color:var(--text-2)" id="threadSub">Hermes · 在线</span>
+              </div>
+              <span class="spacer"></span>
+              <button class="icon-btn" aria-label="会话设置">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 00-2-1.2L16.2 2h-4l-.4 2.5a7 7 0 00-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 002 1.2l.4 2.5h4l.4-2.5a7 7 0 002-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <div class="chat-scroll">
+              <div class="day-sep">今天</div>
+              <div class="msg in">你有一条新的审批请求，请确认是否允许运行外部命令。<div class="meta">14:28</div></div>
+              <div class="msg out">已批准，继续执行。<div class="meta">14:29 ✓✓</div></div>
+              <div class="msg in">任务已完成 ✅ 结果已写入对话记录。<div class="meta">14:30</div></div>
+              <div class="typing"><i></i><i></i><i></i></div>
+            </div>
+            <div class="inputbar">
+              <button class="icon-btn" aria-label="附件 / 斜杠命令" style="width:38px;height:38px">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11.5l-8.5 8.5a5 5 0 01-7-7l9-9a3.3 3.3 0 014.7 4.7l-9 9a1.6 1.6 0 01-2.3-2.3l8.2-8.2"/></svg>
+              </button>
+              <input placeholder="发送消息…" id="msgInput" />
+              <button class="send-fab" id="sendBtn" aria-label="发送">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 11l18-8-8 18-2.5-7.5L3 11z"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- VIEW: settings -->
+          <div class="screen-view" id="view-settings">
+            <div class="appbar">
+              <button class="icon-btn" aria-label="返回" data-view="chats">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+              </button>
+              <span class="title">设置</span>
+            </div>
+            <div class="list" style="padding-bottom:90px">
+              <div class="profile">
+                <div class="avatar av-3">我</div>
+                <div>
+                  <div class="p-name">我的账号</div>
+                  <div class="p-sub">在线 · 已连接 Hermes</div>
+                </div>
+              </div>
+              <div class="set-card">
+                <div class="set-row"><div class="set-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5v14" stroke-linecap="round"/></svg></div><div><div class="s-label">连接设置</div><div class="s-sub">Base URL · API Key</div></div><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="set-row"><div class="set-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6 3" stroke-linecap="round"/></svg></div><div><div class="s-label">外观</div><div class="s-sub">浅色 / 深色 · 主题色</div></div><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="set-row"><div class="set-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h10" stroke-linecap="round"/></svg></div><div><div class="s-label">后台与显示</div><div class="s-sub">常驻通知 · 玻璃标签栏</div></div><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                <div class="set-row"><div class="set-ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01" stroke-linecap="round"/></svg></div><div><div class="s-label">关于</div><div class="s-sub">版本 · 开源协议</div></div><svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+              </div>
+            </div>
+            <div class="tabbar-wrap">
+              <nav class="tabbar" aria-label="主导航">
+                <button class="tab" data-view="chats">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H8l-4 4z" stroke-linejoin="round"/></svg>
+                  对话
+                </button>
+                <button class="tab" data-view="new">
+                  <span class="fab"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>
+                </button>
+                <button class="tab active" data-view="settings">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.2"/><path d="M19 12a7 7 0 00-.1-1.2l2-1.5-2-3.4-2.3 1a7 7 0 00-2-1.2L16.2 2h-4l-.4 2.5a7 7 0 00-2 1.2l-2.3-1-2 3.4 2 1.5A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.3-1a7 7 0 002 1.2l.4 2.5h4l.4-2.5a7 7 0 002-1.2l2.3 1 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z" stroke-linejoin="round"/></svg>
+                  设置
+                </button>
+              </nav>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- annotations -->
+      <div>
+        <div class="comp-grid">
+          <div class="comp">
+            <h3>会话列表</h3>
+            <p style="color:var(--text-2);font-size:var(--t-sm)">Telegram 式扁平行布局，发件人首字母<b>相邻色渐变头像</b> + 名称 + 时间 + 双行预览 + 未读红点。点击任意项带头像进入对话。</p>
+            <div class="note">未读消息采用高对比红点（≥ 3:1），而非仅靠颜色区分，照顾色觉障碍用户。</div>
+          </div>
+          <div class="comp">
+            <h3>对话界面 + 神奇缩放</h3>
+            <p style="color:var(--text-2);font-size:var(--t-sm)">左灰右蓝气泡、已读双勾、输入中动画。底部「＋」蓝色圆键点击后，以 macOS 神奇缩放放大延展为<b>全新会话</b>。</p>
+            <div class="note">缩放用 expo-out 贝塞尔（cubic-bezier(0.16,1,0.3,1)），尊重 prefers-reduced-motion。</div>
+          </div>
+          <div class="comp">
+            <h3>玻璃悬浮标签栏</h3>
+            <p style="color:var(--text-2);font-size:var(--t-sm)">四周外边距 + 大圆角 + 毛玻璃模糊 + 细描边 + 软阴影。中间「＋」为蓝色上浮 FAB，激活态高亮。</p>
+            <div class="note">毛玻璃实时响应列表滚动，iOS / Telegram 质感统一。</div>
+          </div>
+          <div class="comp">
+            <h3>设置页</h3>
+            <p style="color:var(--text-2);font-size:var(--t-sm)">资料区 + 分组卡片（连接 / 外观 / 后台 / 关于）。每行图标 + 标签 + 副标题 + 箭头，点击区域 ≥ 44px。</p>
+            <div class="note">分组边界用 1px 发丝线而非重卡片，降低视觉噪音。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== COMPONENTS ===================== -->
+  <section class="section">
+    <div class="section-head">
+      <div class="kicker">Components</div>
+      <h2>基础组件规范</h2>
+    </div>
+    <div class="comp-grid">
+      <div class="comp">
+        <h3>按钮 Buttons</h3>
+        <div class="row">
+          <button class="btn primary">发送</button>
+          <button class="btn ghost">取消</button>
+        </div>
+        <div style="margin-top:var(--s4)"><span class="chip">主操作仅一种</span></div>
+      </div>
+      <div class="comp">
+        <h3>头像 Avatar</h3>
+        <div class="row">
+          <div class="avatar av-1">A</div>
+          <div class="avatar av-2">B</div>
+          <div class="avatar av-3">C</div>
+          <div class="avatar av-4">D</div>
+          <div class="avatar av-5">E</div>
+          <div class="avatar av-6">F</div>
+        </div>
+        <div class="note" style="margin-top:var(--s4)">avatar_1~6 为<b>相邻色渐变</b>（如红→橙、蓝→靛），按名称哈希取色，同一联系人颜色稳定且更有层次。</div>
+      </div>
+      <div class="comp">
+        <h3>徽标 & 状态</h3>
+        <div class="row">
+          <span class="badge">3</span><span class="badge muted">99+</span>
+          <span class="chip">在线</span>
+          <span class="chip" style="background:oklch(28% 0.06 150);color:var(--success)">已连接</span>
+        </div>
+      </div>
+      <div class="comp">
+        <h3>输入框 Input</h3>
+        <div class="inputbar" style="margin:0">
+          <button class="icon-btn" style="width:36px;height:36px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11.5l-8.5 8.5a5 5 0 01-7-7l9-9a3.3 3.3 0 014.7 4.7l-9 9a1.6 1.6 0 01-2.3-2.3l8.2-8.2"/></svg></button>
+          <input placeholder="输入消息…" />
+          <button class="send-fab"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 11l18-8-8 18-2.5-7.5L3 11z"/></svg></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== ACCESSIBILITY ===================== -->
+  <section class="section">
+    <div class="section-head">
+      <div class="kicker">Inclusive</div>
+      <h2>无障碍与易用性</h2>
+    </div>
+    <ul class="a11y-list">
+      <li><span class="ck">✓</span><span><b>对比度</b>：正文 / 背景对比 ≥ 4.5:1，大字 ≥ 3:1，符合 WCAG AA。</span></li>
+      <li><span class="ck">✓</span><span><b>触摸目标</b>：所有可点击元素 ≥ 44×44px。</span></li>
+      <li><span class="ck">✓</span><span><b>键盘可达</b>：标签栏、按钮、输入框均可 Tab 聚焦，焦点环清晰。</span></li>
+      <li><span class="ck">✓</span><span><b>语义 HTML</b>：导航用 &lt;nav&gt;，列表用 &lt;ul&gt;，图标配 aria-label。</span></li>
+      <li><span class="ck">✓</span><span><b>不依赖颜色</b>：未读用红点 + 数字，状态用文字 + 图标。</span></li>
+      <li><span class="ck">✓</span><span><b>文字缩放</b>：字号用 rem，支持浏览器放大至 200% 不破版。</span></li>
+      <li><span class="ck">✓</span><span><b>深色模式</b>：非反色，用表面提亮 + 强调色降饱和营造层次。</span></li>
+      <li><span class="ck">✓</span><span><b>减少动效</b>：动画尊重 prefers-reduced-motion 偏好。</span></li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>Hermes · 对话界面设计方案 — UI Designer</span>
+    <span>浅色 / 深色双主题 · Telegram 交互习惯 · WCAG AA</span>
+  </footer>
+</div>
+
+<script>
+/* ---------- theme toggle ---------- */
+const root = document.documentElement;
+const themeBtn = document.getElementById('themeBtn');
+const themeIcon = document.getElementById('themeIcon');
+const themeLabel = document.getElementById('themeLabel');
+function applyTheme(t){
+  root.setAttribute('data-theme', t);
+  const dark = t === 'dark';
+  themeIcon.textContent = dark ? '☀️' : '🌙';
+  themeLabel.textContent = dark ? '浅色模式' : '深色模式';
+}
+themeBtn.addEventListener('click', () => {
+  const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+});
+
+/* ---------- conversation list data ---------- */
+const chats = [
+  {n:'系统通知', i:'设', av:'av-1', t:'14:30', p:'任务已完成 ✅ 结果已写入对话记录。', u:2},
+  {n:'产品经理 · Lin', i:'L', av:'av-5', t:'13:12', p:'原型看一下，交互符合预期 👍', u:0},
+  {n:'Hermes Agent', i:'H', av:'av-3', t:'12:48', p:'已为你生成周报草稿，请查收。', u:5},
+  {n:'设计评审组', i:'设', av:'av-4', t:'11:05', p:'你看了下间距规范，8pt 网格很稳。', u:1},
+  {n:'运维告警', i:'运', av:'av-2', t:'09:31', p:'CPU 使用率恢复至正常区间。', u:0},
+  {n:'周末徒步', i:'徒', av:'av-6', t:'周三', p:'这周六出发，记得带水 💧', u:0},
+];
+const list = document.getElementById('chatList');
+list.innerHTML = chats.map(c => `
+  <div class="chat-item" data-open="thread" data-av="${c.av}" data-name="${c.n}">
+    <div class="avatar ${c.av}">${c.i}</div>
+    <div class="ci-body">
+      <div class="ci-top"><span class="ci-name">${c.n}</span><span class="ci-time">${c.t}</span></div>
+      <div class="ci-preview"><span>${c.p}</span>${c.u ? `<span class="badge">${c.u}</span>` : ''}</div>
+    </div>
+  </div>`).join('');
+
+/* ---------- view switching ---------- */
+function showView(id){
+  document.querySelectorAll('.screen-view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + id).classList.add('active');
+  // sync tab active state everywhere
+  document.querySelectorAll('.tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.view === id || (id==='thread' && t.dataset.view==='chats'));
+  });
+}
+document.querySelectorAll('.tab, [data-view]').forEach(el => {
+  if(el.dataset.view && el.dataset.view !== 'new'){
+    el.addEventListener('click', () => showView(el.dataset.view));
+  }
+});
+/* open a conversation from the list, carrying over avatar + name */
+document.querySelectorAll('[data-open="thread"]').forEach(el => {
+  el.addEventListener('click', () => {
+    const av = el.dataset.av, name = el.dataset.name;
+    if(av){ const ta = document.getElementById('threadAvatar'); if(ta) ta.className = 'avatar ' + av; }
+    const tn = document.getElementById('threadName'); if(tn) tn.textContent = name || '对话';
+    const ts = document.getElementById('threadSub'); if(ts) ts.textContent = 'Hermes · 在线';
+    showView('thread');
+  });
+});
+document.getElementById('backBtn').addEventListener('click', () => showView('chats'));
+
+/* ---------- search: smooth bezier expand (no abrupt show/hide) ---------- */
+const searchToggle = document.getElementById('searchToggle');
+const searchBar = document.getElementById('searchBar');
+const searchInput = document.getElementById('searchInput');
+searchToggle.addEventListener('click', () => {
+  const open = !searchBar.classList.contains('open');
+  searchBar.classList.toggle('open', open);
+  if(open) setTimeout(() => searchInput.focus(), 140);
+  else searchInput.blur();
+});
+
+/* ---------- macOS-style "magic zoom": blue compose FAB expands into a new conversation ---------- */
+function magicZoomNewChat(btn){
+  const screen = document.querySelector('.screen');
+  const sr = screen.getBoundingClientRect();
+  const br = btn.getBoundingClientRect();
+  const clone = document.createElement('div');
+  Object.assign(clone.style, {
+    position:'fixed', left:br.left+'px', top:br.top+'px',
+    width:br.width+'px', height:br.height+'px', borderRadius:'50%',
+    background:'var(--primary)', zIndex:9999, pointerEvents:'none', transformOrigin:'center center'
+  });
+  document.body.appendChild(clone);
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){ clone.remove(); openNewChat(); return; }
+  const dx = (sr.left + sr.width/2) - (br.left + br.width/2);
+  const dy = (sr.top + sr.height/2) - (br.top + br.height/2);
+  const scale = Math.max(sr.width/br.width, sr.height/br.height) * 1.18;
+  const anim = clone.animate([
+    { transform:'translate(0,0) scale(1)', borderRadius:'50%' },
+    { transform:`translate(${dx}px, ${dy}px) scale(${scale})`, borderRadius:'34px' }
+  ], { duration:560, easing:'cubic-bezier(0.16, 1, 0.3, 1)', fill:'forwards' });
+  anim.onfinish = () => { clone.remove(); openNewChat(); };
+}
+function openNewChat(){
+  const ta = document.getElementById('threadAvatar'); if(ta) ta.className = 'avatar av-3';
+  const tn = document.getElementById('threadName'); if(tn) tn.textContent = '新建会话';
+  const ts = document.getElementById('threadSub'); if(ts) ts.textContent = 'Hermes · 新对话';
+  const scroll = document.querySelector('#view-thread .chat-scroll');
+  scroll.querySelectorAll('.msg').forEach(m => m.remove());
+  const input = document.getElementById('msgInput'); if(input) input.placeholder = '输入消息，开始新对话…';
+  scroll.scrollTop = 0;
+  showView('thread');
+  const v = document.getElementById('view-thread');
+  v.animate([{opacity:.35},{opacity:1}], {duration:280, easing:'ease-out'});
+}
+document.querySelectorAll('[data-view="new"]').forEach(btn => {
+  btn.addEventListener('click', (e) => { e.stopPropagation(); magicZoomNewChat(btn); });
+});
+
+/* ---------- send micro-interaction ---------- */
+const sendBtn = document.getElementById('sendBtn');
+const msgInput = document.getElementById('msgInput');
+const chatScroll = document.querySelector('#view-thread .chat-scroll');
+sendBtn.addEventListener('click', () => {
+  const txt = msgInput.value.trim();
+  if(!txt) return;
+  const m = document.createElement('div');
+  m.className = 'msg out';
+  m.innerHTML = `${txt}<div class="meta">${'14:3'+Math.floor(Math.random()*9)} ✓✓</div>`;
+  chatScroll.insertBefore(m, chatScroll.querySelector('.typing'));
+  msgInput.value = '';
+  chatScroll.scrollTop = chatScroll.scrollHeight;
+});
+
+/* ---------- show computed OKLCH values in tokens panel ---------- */
+function read(v){ return getComputedStyle(root).getPropertyValue(v).trim(); }
+function setText(id, val){ const e=document.getElementById(id); if(e) e.textContent = val; }
+function refreshSwatches(){
+  setText('c-primary', read('--primary'));
+  setText('c-in', read('--bubble-in'));
+  setText('c-s2', read('--surface-2'));
+  setText('c-t1', read('--text-1'));
+  setText('c-un', read('--unread'));
+  setText('c-ok', read('--success'));
+}
+refreshSwatches();
+themeBtn.addEventListener('click', () => setTimeout(refreshSwatches, 50));
+</script>
+</body>
+</html>

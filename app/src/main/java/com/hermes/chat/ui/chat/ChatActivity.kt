@@ -34,8 +34,11 @@ import com.hermes.chat.ui.common.AvatarRole
 import com.hermes.chat.ui.common.showAvatarPicker
 import com.hermes.chat.ui.common.showAvatarRoleChooser
 import com.hermes.chat.ui.settings.SettingsActivity
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 class ChatActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityChatBinding
@@ -45,6 +48,10 @@ class ChatActivity : AppCompatActivity() {
     private lateinit var slashAdapter: SlashInlineAdapter
     /** 插入斜杠命令时抑制 TextWatcher 的面板检测，避免插入后面板闪现。 */
     private var suppressSlash = false
+    /** 发送消息后强制滚动到底部（绕过 wasAtBottom 检查）。 */
+    private var forceScrollToBottom = false
+    /** 搜索跳转：待定位的消息 id（定位后清空）。 */
+    private var pendingTargetId: String? = null
 
     /** 文件选择器（点击曲别针按钮触发）。 */
     private val filePickerLauncher =
@@ -78,6 +85,7 @@ class ChatActivity : AppCompatActivity() {
         }
 
         viewModel.init(intent.getStringExtra(EXTRA_CONVERSATION_ID))
+        pendingTargetId = intent.getStringExtra(EXTRA_MESSAGE_ID)
 
         setSupportActionBar(binding.toolbar)
         binding.toolbar.setNavigationOnClickListener { finish() }
@@ -105,6 +113,8 @@ class ChatActivity : AppCompatActivity() {
         )
         binding.recyclerMessages.layoutManager = LinearLayoutManager(this)
         binding.recyclerMessages.adapter = adapter
+        // 禁用变更动画：notifyItemChanged 默认触发闪烁动画，流式时每帧都闪 → 持续高刷新率
+        (binding.recyclerMessages.itemAnimator as? androidx.recyclerview.widget.DefaultItemAnimator)?.supportsChangeAnimations = false
 
         // ── 内联斜杠命令弹板 ──
         slashAdapter = SlashInlineAdapter(SlashCommands.all) { cmd ->
@@ -148,11 +158,36 @@ class ChatActivity : AppCompatActivity() {
                 adapter.setStreamingAssistantId(viewModel.streamingAssistantId.value)
                 adapter.setStreamingState(viewModel.thinkingContent.value, viewModel.statusText.value)
                 adapter.liveContent = viewModel.liveContent.value
+
+                // 搜索跳转：定位到目标消息并高亮（数据到达后即处理，未到则保留 pending）
+                val target = pendingTargetId
+                if (target != null) {
+                    val pos = list.indexOfFirst { it.id == target }
+                    if (pos >= 0) {
+                        pendingTargetId = null
+                        adapter.submitList(list) {
+                            binding.recyclerMessages.post {
+                                (binding.recyclerMessages.layoutManager as? LinearLayoutManager)
+                                    ?.scrollToPositionWithOffset(pos, 200)
+                                adapter.setHighlight(target)
+                            }
+                        }
+                        binding.textEmptyChat.visibility =
+                            if (list.isEmpty()) View.VISIBLE else View.GONE
+                        return@collect
+                    }
+                }
+
                 val wasAtBottom = isAtBottom()
                 adapter.submitList(list) {
-                    if (list.isNotEmpty() && wasAtBottom) {
-                        binding.recyclerMessages.scrollToPosition(list.lastIndex)
+                    if (list.isNotEmpty() && (wasAtBottom || forceScrollToBottom)) {
+                        // post 确保在 RecyclerView 完成布局后再滚动，
+                        // 避免 submitList 回调时新 item 尚未布局导致滚动无效
+                        binding.recyclerMessages.post {
+                            binding.recyclerMessages.scrollToPosition(list.lastIndex)
+                        }
                     }
+                    forceScrollToBottom = false
                 }
                 binding.textEmptyChat.visibility =
                     if (list.isEmpty()) View.VISIBLE else View.GONE
@@ -163,25 +198,15 @@ class ChatActivity : AppCompatActivity() {
                 binding.buttonSend.isEnabled = !streaming
             }
         }
+        // 合并 3 个高频流式 Flow + sample(100ms) 节流，避免每个 SSE delta 都触发
+        // notifyItemChanged() → RecyclerView 重绘 → 屏幕面板保持 120Hz 降不下来 → 耗电
+        // 节流后 UI 更新从每秒几十次降到最多 10 次，LTPO 可正常降刷新率
         lifecycleScope.launch {
-            viewModel.thinkingContent.collect {
-                adapter.setStreamingState(it, viewModel.statusText.value)
-                adapter.setStreamingAssistantId(viewModel.streamingAssistantId.value)
-                adapter.liveContent = viewModel.liveContent.value
-                notifyStreamingItemChanged()
-            }
-        }
-        lifecycleScope.launch {
-            viewModel.statusText.collect {
-                adapter.setStreamingState(viewModel.thinkingContent.value, it)
-                adapter.setStreamingAssistantId(viewModel.streamingAssistantId.value)
-                adapter.liveContent = viewModel.liveContent.value
-                notifyStreamingItemChanged()
-            }
-        }
-        lifecycleScope.launch {
-            viewModel.liveContent.collect { c ->
-                adapter.liveContent = c
+            combine(viewModel.liveContent, viewModel.thinkingContent, viewModel.statusText) { content, thinking, status ->
+                Triple(content, thinking, status)
+            }.sample(100).collect { (content, thinking, status) ->
+                adapter.liveContent = content
+                adapter.setStreamingState(thinking, status)
                 adapter.setStreamingAssistantId(viewModel.streamingAssistantId.value)
                 notifyStreamingItemChanged()
                 scrollToBottomIfAtBottom()
@@ -215,6 +240,10 @@ class ChatActivity : AppCompatActivity() {
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
+        // 用户打开 App，取消回复完成提醒通知
+        ChatNotificationManager.cancelAlert(this)
+        // 从设置页返回后刷新气泡头像（用户可能刚改了自定义头像）
+        if (::adapter.isInitialized) adapter.notifyDataSetChanged()
     }
 
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
@@ -245,7 +274,9 @@ class ChatActivity : AppCompatActivity() {
     /** 滚动到最后一条（仅在用户已在底部时才滚） */
     private fun scrollToBottomIfAtBottom() {
         if (isAtBottom()) {
-            binding.recyclerMessages.scrollToPosition(adapter.itemCount - 1)
+            binding.recyclerMessages.post {
+                binding.recyclerMessages.scrollToPosition(adapter.itemCount - 1)
+            }
         }
     }
 
@@ -341,6 +372,7 @@ class ChatActivity : AppCompatActivity() {
             return
         }
         binding.editInput.text?.clear()
+        forceScrollToBottom = true
         viewModel.sendUserMessage(text)
     }
 
@@ -379,6 +411,7 @@ class ChatActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_CONVERSATION_ID = "conversation_id"
+        const val EXTRA_MESSAGE_ID = "message_id"
     }
 }
 

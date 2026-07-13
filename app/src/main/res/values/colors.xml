@@ -9,9 +9,11 @@
     <color name="tg_blue">#007AFF</color>
     <color name="tg_blue_dark">#0066D6</color>
     <color name="tg_blue_pressed">#0062CC</color>
+    <!-- 搜索关键词高亮：浅蓝底（实心阶段）+ 蓝字 -->
+    <color name="search_highlight_bg">#C9E2FF</color>
 
-    <!-- 页面背景（系统白） / 分组背景（iOS 灰） -->
-    <color name="page_bg">#FFFFFF</color>
+    <!-- 页面背景（冷调近白，非纯白）/ 分组背景（iOS 灰） -->
+    <color name="page_bg">#FAFAFC</color>
     <color name="chat_bg">#F2F2F7</color>
     <color name="surface">#FFFFFF</color>
 
@@ -33,8 +35,8 @@
     <color name="bubble_out_bg">#007AFF</color>
     <color name="bubble_out_text">#FFFFFF</color>
 
-    <!-- 文本（iOS label 层级） -->
-    <color name="text_primary">#000000</color>
+    <!-- 文本（iOS label 层级，主文为冷调近黑，非纯黑） -->
+    <color name="text_primary">#1C1C1E</color>
     <color name="text_secondary">#8E8E93</color>
     <color name="text_tertiary">#C7C7CC</color>
     <color name="text_on_blue">#FFFFFF</color>
@@ -88,6 +90,12 @@
     <color name="avatar_4">#FF2D55</color>
     <color name="avatar_5">#AF52DE</color>
     <color name="avatar_6">#5AC8FA</color>
+
+    <!-- 悬浮输入条软阴影色（浅色模式下一缕淡灰投影） -->
+    <color name="input_shadow">#22000000</color>
+
+    <!-- 未读红点 / 未读计数徽标底（设计：相邻冷红，白字） -->
+    <color name="unread_red">#FF3B30</color>
 
     <!-- 兼容旧引用（映射为等价 iOS 色，避免遗留引用断裂） -->
     <color name="hermes_primary">#007AFF</color>

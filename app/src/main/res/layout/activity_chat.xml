@@ -6,6 +6,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@color/chat_bg"
+    android:clipChildren="false"
     android:fitsSystemWindows="true">
 
     <com.google.android.material.appbar.MaterialToolbar
@@ -82,7 +83,7 @@
             android:paddingStart="@dimen/space_xs"
             android:paddingTop="@dimen/space_lg"
             android:paddingEnd="@dimen/space_xs"
-            android:paddingBottom="@dimen/space_md" />
+            android:paddingBottom="@dimen/space_lg" />
 
         <TextView
             android:id="@+id/textEmptyChat"
@@ -116,7 +117,7 @@
 
     </FrameLayout>
 
-    <!-- iOS 风输入条：白底圆角药丸，左侧附件、中间输入框、右侧蓝色发送圆钮 -->
+    <!-- iOS 风输入条：悬浮药丸（设计全圆角 + surface 底 + 发丝描边 + 轻投影），左侧附件、中间输入框、右侧蓝色发送圆钮（纸飞机） -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -125,12 +126,14 @@
         android:layout_marginStart="@dimen/space_md"
         android:layout_marginEnd="@dimen/space_md"
         android:layout_marginTop="@dimen/space_sm"
-        android:layout_marginBottom="@dimen/space_md"
+        android:layout_marginBottom="@dimen/space_lg"
         android:background="@drawable/bg_input_bar"
-        android:paddingStart="@dimen/space_sm"
-        android:paddingTop="@dimen/space_xs"
-        android:paddingEnd="@dimen/space_xs"
-        android:paddingBottom="@dimen/space_xs">
+        android:elevation="3dp"
+        android:outlineSpotShadowColor="@color/input_shadow"
+        android:paddingStart="12dp"
+        android:paddingTop="6dp"
+        android:paddingEnd="6dp"
+        android:paddingBottom="6dp">
 
         <ImageButton
             android:id="@+id/imageAttach"
@@ -151,20 +154,22 @@
             android:inputType="textMultiLine|textCapSentences"
             android:maxLines="6"
             android:imeOptions="actionSend"
-            android:textSize="16sp"
+            android:gravity="center_vertical"
+            android:textSize="15sp"
             android:textColor="@color/text_primary"
-            android:paddingStart="@dimen/space_md"
-            android:paddingTop="@dimen/space_sm"
-            android:paddingEnd="@dimen/space_sm"
-            android:paddingBottom="@dimen/space_sm" />
+            android:textColorHint="@color/text_tertiary"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp" />
 
         <ImageButton
             android:id="@+id/buttonSend"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
             android:background="@drawable/bg_circle_blue"
             android:contentDescription="@string/action_send"
-            android:src="@drawable/ic_arrow_up"
+            android:src="@drawable/ic_send"
+            android:elevation="2dp"
+            android:outlineSpotShadowColor="@color/input_shadow"
             app:tint="@color/white" />
     </LinearLayout>
 

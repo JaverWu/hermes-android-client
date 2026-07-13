@@ -42,6 +42,14 @@ class SettingsRepository(context: Context) {
         get() = prefs.getInt(KEY_AI_AVATAR, 0)
         set(v) = prefs.edit().putInt(KEY_AI_AVATAR, v).apply()
 
+    /**
+     * 用户自定义头像：内部存储中的图片绝对路径。
+     * 空字符串 = 未设置，气泡与设置页回退到 [userAvatarIndex] 对应的预设字形。
+     */
+    var userAvatarPath: String
+        get() = prefs.getString(KEY_USER_AVATAR_PATH, "") ?: ""
+        set(v) = prefs.edit().putString(KEY_USER_AVATAR_PATH, v.trim()).apply()
+
     /** 长运行模式（/v1/runs）开关：Service 读取以决定走普通流式还是 runs 订阅。 */
     var runMode: Boolean
         get() = prefs.getBoolean(KEY_RUN_MODE, false)
@@ -51,6 +59,16 @@ class SettingsRepository(context: Context) {
     var keepScreenOn: Boolean
         get() = prefs.getBoolean(KEY_KEEP_SCREEN_ON, false)
         set(v) = prefs.edit().putBoolean(KEY_KEEP_SCREEN_ON, v).apply()
+
+    /** 最近活跃会话 id：通知栏回复时确定发到哪个会话 */
+    var lastConversationId: String
+        get() = prefs.getString(KEY_LAST_CONV_ID, "") ?: ""
+        set(v) = prefs.edit().putString(KEY_LAST_CONV_ID, v).apply()
+
+    /** 常驻通知栏对话开关 */
+    var persistentNotification: Boolean
+        get() = prefs.getBoolean(KEY_PERSISTENT_NOTIF, true)
+        set(v) = prefs.edit().putBoolean(KEY_PERSISTENT_NOTIF, v).apply()
 
     // ===== 草稿：按会话 id 缓存未发送的输入，退出再进不丢失 =====
     fun getDraft(conversationId: String): String =
@@ -76,9 +94,12 @@ class SettingsRepository(context: Context) {
         private const val KEY_NIGHT_MODE = "night_mode"
         private const val KEY_USER_AVATAR = "user_avatar_index"
         private const val KEY_AI_AVATAR = "ai_avatar_index"
+        private const val KEY_USER_AVATAR_PATH = "user_avatar_path"
         private const val KEY_RUN_MODE = "run_mode"
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
         private const val KEY_DRAFT = "draft_"
+        private const val KEY_LAST_CONV_ID = "last_conversation_id"
+        private const val KEY_PERSISTENT_NOTIF = "persistent_notification"
 
         const val MODE_SYSTEM = "system"
         const val MODE_LIGHT = "light"

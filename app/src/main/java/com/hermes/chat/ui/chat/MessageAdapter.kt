@@ -17,6 +17,7 @@ import com.hermes.chat.databinding.ItemMessageApprovalBinding
 import com.hermes.chat.databinding.ItemMessageAssistantBinding
 import com.hermes.chat.databinding.ItemMessageSystemBinding
 import com.hermes.chat.databinding.ItemMessageUserBinding
+import com.hermes.chat.ui.common.AvatarLoader
 import com.hermes.chat.ui.common.AvatarPresets
 import io.noties.markwon.Markwon
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
@@ -42,6 +43,9 @@ class MessageAdapter(
     /** 折叠状态（按消息 id 记忆，避免重绑时跳变） */
     private val reasoningExpanded = mutableSetOf<String>()
 
+    /** 搜索跳转：需要短暂高亮的消息 id（定位到该条时闪一下） */
+    private var highlightId: String? = null
+
     fun setStreamingAssistantId(id: String?) {
         streamingAssistantId = id
     }
@@ -49,6 +53,30 @@ class MessageAdapter(
     fun setStreamingState(thinking: String, status: String) {
         thinkingContent = thinking
         statusText = status
+    }
+
+    /**
+     * 搜索跳转定位：高亮某条消息整行约 2.2 秒后自动取消。
+     * 兼容列表尚未包含该消息的情况（先记下 id，待数据到达并 bind 时自然高亮）。
+     */
+    fun setHighlight(messageId: String) {
+        val prev = highlightId
+        highlightId = messageId
+        if (prev != null) {
+            val prevPos = currentList.indexOfFirst { it.id == prev }
+            if (prevPos >= 0) notifyItemChanged(prevPos)
+        }
+        val pos = currentList.indexOfFirst { it.id == messageId }
+        if (pos >= 0) {
+            notifyItemChanged(pos)
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                if (highlightId == messageId) {
+                    highlightId = null
+                    val p = currentList.indexOfFirst { it.id == messageId }
+                    if (p >= 0) notifyItemChanged(p)
+                }
+            }, 2200)
+        }
     }
 
     private fun getMarkwon(context: Context): Markwon {
@@ -82,20 +110,31 @@ class MessageAdapter(
         val item = getItem(position)
         val ctx = holder.itemView.context
         holder.itemView.setOnLongClickListener { onMessageLongClick(item); true }
+        // 搜索定位高亮：命中消息整行短暂高亮
+        if (item.id == highlightId) {
+            holder.itemView.setBackgroundResource(R.drawable.bg_message_highlight)
+        } else {
+            holder.itemView.setBackgroundResource(0)
+        }
         when (holder) {
             is UserVH -> {
-                val user = AvatarPresets.user(settings.userAvatarIndex)
-                holder.binding.imageAvatar.backgroundTintList =
-                    android.content.res.ColorStateList.valueOf(ContextCompat.getColor(ctx, user.colorRes))
-                holder.binding.textAvatarLetter.text = user.glyph
+                val path = settings.userAvatarPath
+                if (path.isNotBlank() && AvatarLoader.loadCircularFromFile(holder.binding.imageAvatar, path)) {
+                    holder.binding.textAvatarLetter.visibility = View.GONE
+                } else {
+                    val user = AvatarPresets.user(settings.userAvatarIndex)
+                    holder.binding.imageAvatar.setBackgroundResource(user.gradientRes)
+                    holder.binding.imageAvatar.backgroundTintList = null
+                    holder.binding.textAvatarLetter.visibility = View.VISIBLE
+                    holder.binding.textAvatarLetter.text = user.glyph
+                }
                 holder.binding.textMessage.text = item.content
                 holder.binding.textTime.text = formatTime(item.createdAt)
             }
             is AssistantVH -> {
-                val ai = AvatarPresets.ai(settings.aiAvatarIndex)
-                holder.binding.imageAvatar.backgroundTintList =
-                    android.content.res.ColorStateList.valueOf(ContextCompat.getColor(ctx, ai.colorRes))
-                holder.binding.textAvatarLetter.text = ai.glyph
+                // 接收方（回复）头像固定使用 logo
+                AvatarLoader.loadCircular(holder.binding.imageAvatar, R.drawable.ic_logo_large)
+                holder.binding.textAvatarLetter.visibility = View.GONE
 
                 val isStreamingThis = item.id == streamingAssistantId
                 val live = if (isStreamingThis) liveContent else item.content

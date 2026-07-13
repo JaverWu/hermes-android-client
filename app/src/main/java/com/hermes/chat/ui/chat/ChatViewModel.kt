@@ -51,6 +51,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         initialized = true
         if (existingConversationId != null) {
             conversationId = existingConversationId
+            settings.lastConversationId = existingConversationId
             observeConversation(existingConversationId)
         }
     }
@@ -196,6 +197,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         if (conversationId != null) return
         val id = newId()
         conversationId = id
+        settings.lastConversationId = id
         db.conversationDao().insert(
             ConversationEntity(
                 id = id,

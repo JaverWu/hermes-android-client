@@ -40,7 +40,7 @@
                 android:textStyle="bold"
                 tools:text="H" />
 
-            <!-- 未读红点（默认隐藏） -->
+            <!-- 未读徽标：白字 + 红底（默认隐藏；数据模型接入后显示） -->
             <TextView
                 android:id="@+id/textUnread"
                 android:layout_width="18dp"
@@ -48,9 +48,10 @@
                 android:layout_gravity="end|top"
                 android:layout_marginTop="-4dp"
                 android:layout_marginEnd="-4dp"
-                android:background="@drawable/bg_circle_blue"
+                android:background="@drawable/bg_unread_red"
                 android:gravity="center"
                 android:textColor="@color/white"
+                android:textStyle="bold"
                 android:textSize="11sp"
                 android:visibility="gone"
                 tools:text="2" />

@@ -33,6 +33,7 @@
         android:layout_height="0dp"
         android:clipToPadding="false"
         android:paddingTop="@dimen/space_sm"
+        android:paddingBottom="@dimen/fab_clearance"
         app:layout_constraintTop_toBottomOf="@id/toolbar"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -53,16 +54,97 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- 新增对话：右下角悬浮按钮（FAB） -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabNewChat"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/space_lg"
-        android:contentDescription="@string/action_new_chat"
+        android:contentDescription="@string/tab_new_chat"
         app:srcCompat="@drawable/ic_new_chat"
         app:backgroundTint="@color/tg_blue"
         app:tint="@color/white"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- 搜索栏：点击工具栏搜索图标后从顶部展开 -->
+    <LinearLayout
+        android:id="@+id/layoutSearchBar"
+        android:layout_width="0dp"
+        android:layout_height="?attr/actionBarSize"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@color/page_bg"
+        android:paddingStart="@dimen/space_lg"
+        android:paddingEnd="@dimen/space_md"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_search"
+            app:tint="@color/text_secondary" />
+
+        <EditText
+            android:id="@+id/editSearch"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="@dimen/space_sm"
+            android:background="@null"
+            android:hint="@string/search_hint"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:singleLine="true"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_tertiary"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/textSearchClose"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="@dimen/space_sm"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:text="✕"
+            android:textColor="@color/text_secondary"
+            android:textSize="18sp"
+            android:contentDescription="@string/search_close" />
+    </LinearLayout>
+
+    <!-- 搜索结果列表：搜索激活且有关键词时显示，覆盖会话列表 -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerSearchResults"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:clipToPadding="false"
+        android:paddingTop="@dimen/space_sm"
+        android:paddingBottom="@dimen/fab_clearance"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/layoutSearchBar"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- 搜索空状态 -->
+    <TextView
+        android:id="@+id/textSearchEmpty"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/space_xxl"
+        android:gravity="center"
+        android:text="@string/search_result_empty"
+        android:textColor="@color/text_secondary"
+        android:textSize="15sp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/layoutSearchBar"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

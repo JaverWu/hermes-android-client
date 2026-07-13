@@ -48,8 +48,6 @@ class RunWatcherService : Service() {
     companion object {
         const val EXTRA_CONVERSATION_ID = "conversation_id"
         const val EXTRA_ASSISTANT_ID = "assistant_id"
-        private const val CHANNEL_ID = "hermes_run_high"
-        private const val NOTIF_ID = 1001
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -61,9 +59,6 @@ class RunWatcherService : Service() {
     private var assistantId: String? = null
     private val buffer = StringBuilder()
     private val reasoningBuffer = StringBuilder()
-    private val logoBitmap by lazy {
-        BitmapFactory.decodeResource(resources, R.drawable.ic_logo_large)
-    }
     private var approvalHandled = false
     private var lastPersist = 0L
 
@@ -80,7 +75,7 @@ class RunWatcherService : Service() {
         super.onCreate()
         db = (application as HermesApplication).database
         settings = SettingsRepository(application)
-        createChannel()
+        // 通知渠道已在 HermesApplication.onCreate 中注册
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -95,7 +90,10 @@ class RunWatcherService : Service() {
         conversationId = cid
         assistantId = aid
         ActiveRunState.begin(aid)
-        startForeground(NOTIF_ID, buildNotification("Hermes 正在处理…", ongoing = true))
+        startForeground(
+            ChatNotificationManager.NOTIF_ID,
+            ChatNotificationManager.buildForegroundNotification(this, "Hermes 正在处理…", conversationId)
+        )
         // 保活 CPU：前台 Service 只保活进程，锁屏/挂后台后 CPU 仍可能休眠，
         // 导致 SSE 的 readUtf8Line 阻塞线程被挂起、数据到了也读不到。
         if (wakeLock.isHeld.not()) {
@@ -145,12 +143,12 @@ class RunWatcherService : Service() {
         }
         val onStatus: (String, String) -> Unit = { et, _ ->
             ActiveRunState.setStatus(et)
-            updateNotification(ActiveRunState.status.value)
+            ChatNotificationManager.updateStreaming(this, conversationId!!, ActiveRunState.status.value)
         }
         val onToolProgress: (ToolProgressEvent) -> Unit = { ev ->
             ActiveRunState.upsertTool(ToolCall(ev.id, ev.emoji, ev.title, ev.status, ev.preview, true))
             ActiveRunState.setToolStatus(ev.title)
-            updateNotification(ActiveRunState.status.value)
+            ChatNotificationManager.updateStreaming(this, conversationId!!, ActiveRunState.status.value)
             persistThrottled()
         }
 
@@ -245,7 +243,7 @@ class RunWatcherService : Service() {
             }
             // 瞬时网络错误（如 software caused connection abort / 切后台断链）：退避后重试
             Log.i("RunWatcher", "Transient error, retrying after delay (attempt $attempt)")
-            updateNotification("网络中断，正在重连… ($attempt/$MAX_RETRIES)")
+            ChatNotificationManager.updateStreaming(this, conversationId!!, "网络中断，正在重连… ($attempt/$MAX_RETRIES)")
             delay(backoffMillis(attempt))
         }
     }
@@ -386,17 +384,7 @@ class RunWatcherService : Service() {
         }
 
         ActiveRunState.reset()
-        val notifTitle = if (partialWarning) "Hermes 回复了你（可能不完整）" else "Hermes 回复了你"
-        val notifText = if (partialWarning) {
-            "（可能不完整）${bufferContent.take(100)}".ifBlank { "回复可能不完整，点击查看" }
-        } else {
-            bufferContent.take(120).ifBlank { "点击查看完整回复" }
-        }
-        if (!isAppInForeground()) {
-            notifyDone(notifTitle, notifText)
-        } else {
-            Log.i("RunWatcher", "App is in foreground, skipping completion notification")
-        }
+        ChatNotificationManager.showCompleted(this, conversationId!!, !isAppInForeground())
         finishService()
     }
 
@@ -479,80 +467,11 @@ class RunWatcherService : Service() {
             )
         }
         ActiveRunState.reset()
-        if (!isAppInForeground()) {
-            notifyDone("Hermes 请求出错", e.message ?: e.javaClass.simpleName)
-        } else {
-            Log.i("RunWatcher", "App is in foreground, skipping error notification")
-        }
+        ChatNotificationManager.showCompleted(this, conversationId!!, !isAppInForeground())
         finishService()
     }
 
-    // ===================== 通知 =====================
-
-    private fun createChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            if (mgr.getNotificationChannel(CHANNEL_ID) == null) {
-                val channel = NotificationChannel(
-                    CHANNEL_ID,
-                    getString(R.string.notification_channel_name),
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    description = getString(R.string.notification_channel_desc)
-                    enableVibration(true)
-                    enableLights(true)
-                }
-                mgr.createNotificationChannel(channel)
-            }
-        }
-    }
-
-    private fun buildNotification(text: String, ongoing: Boolean): android.app.Notification {
-        val intent = Intent(this, ChatActivity::class.java).apply {
-            putExtra(ChatActivity.EXTRA_CONVERSATION_ID, conversationId)
-        }
-        val pi = PendingIntent.getActivity(
-            this, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.app_name))
-            .setContentText(text)
-            .setSmallIcon(R.drawable.ic_logo_large)
-            .setLargeIcon(logoBitmap)
-            .setContentIntent(pi)
-            .setOngoing(ongoing)
-            .setOnlyAlertOnce(true)
-            .build()
-    }
-
-    private fun updateNotification(text: String) {
-        val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        mgr.notify(NOTIF_ID, buildNotification(text, ongoing = true))
-    }
-
-    private fun notifyDone(title: String, text: String) {
-        val intent = Intent(this, ChatActivity::class.java).apply {
-            putExtra(ChatActivity.EXTRA_CONVERSATION_ID, conversationId)
-        }
-        val pi = PendingIntent.getActivity(
-            this, 1, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val notif = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(title)
-            .setContentText(text)
-            .setSmallIcon(R.drawable.ic_logo_large)
-            .setLargeIcon(logoBitmap)
-            .setContentIntent(pi)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-            .build()
-        val mgr = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        mgr.notify(NOTIF_ID, notif)
-    }
+    // 通知构建/更新/完成均已委托给 ChatNotificationManager
 
     private fun postSystemMessage(text: String) {
         scope.launch {

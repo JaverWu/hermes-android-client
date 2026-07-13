@@ -47,6 +47,16 @@
             android:name=".ui.chat.RunWatcherService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- 通知栏 RemoteInput 回复接收器 -->
+        <receiver
+            android:name=".ui.chat.NotificationReplyReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.hermes.chat.action.REPLY" />
+                <action android:name="com.hermes.chat.action.CLEAR_MESSAGES" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

@@ -2,7 +2,6 @@ package com.hermes.chat.ui.conversations
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -28,10 +27,10 @@ class ConversationAdapter(
     // 仅用于异步加载预览，随 Adapter 生命周期结束而取消
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    // 头像调色板（按会话名 hash 选取）
-    private val avatarColors = intArrayOf(
-        R.color.avatar_1, R.color.avatar_2, R.color.avatar_3,
-        R.color.avatar_4, R.color.avatar_5, R.color.avatar_6
+    // 头像渐变调色板（按会话名 hash 选取，相邻色相 135° 渐变）
+    private val avatarGradients = intArrayOf(
+        R.drawable.av_gradient_1, R.drawable.av_gradient_2, R.drawable.av_gradient_3,
+        R.drawable.av_gradient_4, R.drawable.av_gradient_5, R.drawable.av_gradient_6
     )
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH =
@@ -42,15 +41,14 @@ class ConversationAdapter(
         val itemId = item.id
         val pos = position
         val title = item.title.ifBlank { "新对话" }
-        val ctx = holder.binding.root.context
 
         holder.binding.textTitle.text = title
         holder.binding.textTime.text = formatTime(item.updatedAt)
 
-        // 头像：首字母 + 按名称 hash 选色
-        val colorRes = avatarColors[Math.abs(title.hashCode()) % avatarColors.size]
-        holder.binding.imageAvatar.backgroundTintList =
-            android.content.res.ColorStateList.valueOf(ContextCompat.getColor(ctx, colorRes))
+        // 头像：首字母 + 按名称 hash 选渐变底色
+        val gradientRes = avatarGradients[Math.abs(title.hashCode()) % avatarGradients.size]
+        holder.binding.imageAvatar.setBackgroundResource(gradientRes)
+        holder.binding.imageAvatar.backgroundTintList = null
         holder.binding.textAvatarLetter.text =
             title.firstOrNull()?.uppercaseChar()?.toString() ?: "H"
 

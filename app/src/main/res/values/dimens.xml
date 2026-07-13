@@ -23,4 +23,7 @@
 
     <!-- 气泡最大宽度占比 -->
     <dimen name="bubble_max_width">280dp</dimen>
+
+    <!-- 列表底部留白，保证最后一项不被悬浮 FAB 遮挡 -->
+    <dimen name="fab_clearance">96dp</dimen>
 </resources>

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/layoutRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    android:paddingStart="@dimen/space_lg"
+    android:paddingEnd="@dimen/space_lg"
+    android:paddingTop="@dimen/space_md"
+    android:paddingBottom="@dimen/space_md">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- 头像：用户用自定义/预设头像，助手用 Hermes logo（圆形，统一大小） -->
+        <FrameLayout
+            android:id="@+id/layoutAvatar"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="@dimen/space_md">
+
+            <ImageView
+                android:id="@+id/imageAvatar"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop" />
+
+            <TextView
+                android:id="@+id/textAvatarLetter"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:textSize="16sp"
+                android:textColor="@color/white"
+                tools:text="我" />
+        </FrameLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <!-- 第一行：会话标题 + 时间 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/textTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary"
+                    tools:text="周末旅行计划" />
+
+                <TextView
+                    android:id="@+id/textTime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="@dimen/space_sm"
+                    android:textSize="12sp"
+                    android:textColor="@color/text_secondary"
+                    tools:text="07-14" />
+            </LinearLayout>
+
+            <!-- 第二行：命中片段（头像已区分角色，无需额外标签） -->
+            <TextView
+                android:id="@+id/textSnippet"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textSize="13sp"
+                android:textColor="@color/text_secondary"
+                android:maxLines="2"
+                android:ellipsize="end"
+                tools:text="帮我查一下明天北京的天气，然后规划一条…" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:layout_marginTop="@dimen/space_md"
+        android:background="@color/divider" />
+
+</LinearLayout>

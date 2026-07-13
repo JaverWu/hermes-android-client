@@ -7,9 +7,9 @@
     <color name="tg_blue_dark">#0A84FF</color>
     <color name="tg_blue_pressed">#409CFF</color>
 
-    <!-- 页面背景（纯黑） / 分组背景 -->
-    <color name="page_bg">#000000</color>
-    <color name="chat_bg">#000000</color>
+    <!-- 页面背景（冷调近黑，非纯黑）/ 分组背景 -->
+    <color name="page_bg">#121212</color>
+    <color name="chat_bg">#121212</color>
     <color name="surface">#1C1C1E</color>
 
     <!-- 工具栏 / 状态栏（深色导航栏） -->
@@ -84,6 +84,12 @@
     <color name="bubble_assistant_border">#2C2C2E</color>
     <color name="approval_text">#F0B050</color>
     <color name="system_text">#8E8E93</color>
+
+    <!-- 悬浮输入条软阴影色（深色模式下几乎不可见，靠描边定义边界） -->
+    <color name="input_shadow">#00000000</color>
+
+    <!-- 未读红点 / 未读计数徽标底 -->
+    <color name="unread_red">#FF453A</color>
 
     <!-- 顶部工具状态条（深色） -->
     <color name="tool_strip_bg">#1C1C1E</color>
