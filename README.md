@@ -1,3 +1,8 @@
+#初衷：受够了那种不能打开即用的不顺畅感，所以自己开发了一个Hermes的对话客户端
+#用法：hermes里面的channel选项下面有一个Api server，填写好api key（自己随便设置）
+#然后填入这个安卓客户端就行了！
+#仅在VIVO X100pro测试通过
+
 # Hermes 对话（Android）
 
 纯AI开发，结合Hermes的channel提供的api server开放接口，可以连接hermes，从而提供更流畅、更简单的对话体验
