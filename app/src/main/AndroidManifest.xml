@@ -36,11 +36,6 @@
             android:exported="false"
             android:parentActivityName=".ui.conversations.ConversationsActivity"
             android:windowSoftInputMode="adjustResize" />
-        <activity
-            android:name=".ui.settings.SettingsActivity"
-            android:exported="false"
-            android:parentActivityName=".ui.conversations.ConversationsActivity"
-            android:windowSoftInputMode="adjustResize" />
 
         <!-- 前台 Service：承接对话流式接收，发完消息即可切走/锁屏，回复照样落库并弹通知 -->
         <service

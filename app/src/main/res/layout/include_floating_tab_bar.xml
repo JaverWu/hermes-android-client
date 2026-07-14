@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 底部悬浮玻璃标签栏：对话 / ＋(新对话) / 设置。半透明毛玻璃底色 + 细描边 + 软阴影，避开实时模糊的脆弱性。 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/tabBar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:paddingStart="@dimen/space_lg"
+    android:paddingEnd="@dimen/space_lg"
+    android:paddingTop="28dp"
+    android:paddingBottom="@dimen/space_lg">
+
+    <LinearLayout
+        android:id="@+id/tabBarInner"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:layout_gravity="center_horizontal"
+        android:maxWidth="340dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@drawable/bg_glass_tab_bar"
+        android:paddingStart="@dimen/space_md"
+        android:paddingEnd="@dimen/space_md"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:elevation="8dp"
+        android:outlineSpotShadowColor="@color/input_shadow">
+
+        <!-- 对话：外层仅做居中布局（layout_weight=1），按压 ripple 收敛在内层图标大小按钮上 -->
+        <LinearLayout
+            android:id="@+id/tabChats"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <LinearLayout
+                android:id="@+id/tabChatsBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="6dp">
+
+                <ImageView
+                    android:id="@+id/tabIconChats"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_chats"
+                    app:tint="@color/text_secondary" />
+
+                <TextView
+                    android:id="@+id/tabLabelChats"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="@string/tab_chats"
+                    android:textSize="10sp"
+                    android:textColor="@color/text_secondary" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- ＋ 悬浮按钮（新对话，macOS 式神奇缩放）。白色 + 图标必须绘制在蓝色圆之上：蓝色圆不抬升 elevation，图标显式抬升。 -->
+        <FrameLayout
+            android:id="@+id/tabNew"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="-20dp"
+            android:layout_marginBottom="8dp"
+            android:elevation="12dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackgroundBorderless">
+
+            <View
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_circle_blue"
+                android:outlineSpotShadowColor="@color/input_shadow" />
+
+            <ImageView
+                android:id="@+id/tabNewIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:elevation="2dp"
+                android:src="@drawable/ic_new_chat"
+                app:tint="@color/white" />
+        </FrameLayout>
+
+        <!-- 设置：与对话一致，按压 ripple 收敛在内层图标大小按钮上 -->
+        <LinearLayout
+            android:id="@+id/tabSettings"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <LinearLayout
+                android:id="@+id/tabSettingsBtn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="6dp">
+
+                <ImageView
+                    android:id="@+id/tabIconSettings"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_settings"
+                    app:tint="@color/text_secondary" />
+
+                <TextView
+                    android:id="@+id/tabLabelSettings"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="@string/tab_settings"
+                    android:textSize="10sp"
+                    android:textColor="@color/text_secondary" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

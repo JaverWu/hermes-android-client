@@ -33,7 +33,7 @@ import com.hermes.chat.ui.common.AvatarPresets
 import com.hermes.chat.ui.common.AvatarRole
 import com.hermes.chat.ui.common.showAvatarPicker
 import com.hermes.chat.ui.common.showAvatarRoleChooser
-import com.hermes.chat.ui.settings.SettingsActivity
+import com.hermes.chat.ui.conversations.ConversationsActivity
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
@@ -93,7 +93,11 @@ class ChatActivity : AppCompatActivity() {
             when (item.itemId) {
                 R.id.action_new_chat -> { startNewChat(); true }
                 R.id.action_settings -> {
-                    startActivity(Intent(this, SettingsActivity::class.java)); true
+                    val intent = Intent(this, ConversationsActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        putExtra(ConversationsActivity.EXTRA_SHOW_SETTINGS, true)
+                    }
+                    startActivity(intent); true
                 }
                 R.id.action_edit_avatar -> { openAvatarEditor(); true }
                 R.id.action_run_mode -> {
