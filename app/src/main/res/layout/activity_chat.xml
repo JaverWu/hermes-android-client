@@ -117,6 +117,20 @@
 
     </FrameLayout>
 
+    <!-- 待发送附件芯片行：点击曲别针后显示，可长按单个移除、点 ✕ 清空全部 -->
+    <LinearLayout
+        android:id="@+id/layoutAttachments"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginStart="@dimen/space_md"
+        android:layout_marginEnd="@dimen/space_md"
+        android:layout_marginTop="@dimen/space_xs"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp"
+        android:visibility="gone" />
+
     <!-- iOS 风输入条：悬浮药丸（设计全圆角 + surface 底 + 发丝描边 + 轻投影），左侧附件、中间输入框、右侧蓝色发送圆钮（纸飞机） -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -142,6 +156,15 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/action_attach"
             android:src="@drawable/ic_attach"
+            app:tint="@color/text_secondary" />
+
+        <ImageButton
+            android:id="@+id/buttonExpandInput"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/action_expand_input"
+            android:src="@drawable/ic_expand"
             app:tint="@color/text_secondary" />
 
         <EditText

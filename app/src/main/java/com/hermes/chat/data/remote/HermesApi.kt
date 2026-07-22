@@ -219,7 +219,36 @@ class HermesApi {
     private fun buildBody(model: String, messages: List<ChatMessage>): String {
         val arr = JSONArray()
         messages.forEach { m ->
-            arr.put(JSONObject().put("role", m.role).put("content", m.content))
+            val obj = JSONObject().put("role", m.role)
+            if (m.attachments.isEmpty()) {
+                // 无附件：保持 OpenAI 兼容的纯文本 content
+                obj.put("content", m.content)
+            } else {
+                // 多模态：content 为 part 数组（文本 + 图片/文件）
+                val parts = JSONArray()
+                if (m.content.isNotBlank()) {
+                    parts.put(JSONObject().put("type", "text").put("text", m.content))
+                }
+                m.attachments.forEach { att ->
+                    if (att.mime.startsWith("image/")) {
+                        parts.put(
+                            JSONObject().put("type", "image_url").put(
+                                "image_url", JSONObject().put("url", att.dataUri())
+                            )
+                        )
+                    } else {
+                        parts.put(
+                            JSONObject().put("type", "file").put(
+                                "file", JSONObject()
+                                    .put("filename", att.name)
+                                    .put("file_data", att.dataUri())
+                            )
+                        )
+                    }
+                }
+                obj.put("content", parts)
+            }
+            arr.put(obj)
         }
         return JSONObject().apply {
             put("model", model.ifBlank { "hermes-agent" })

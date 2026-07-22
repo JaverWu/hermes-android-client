@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.graphics.Rect
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -24,6 +25,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.hermes.chat.R
 import com.hermes.chat.data.local.MessageEntity
+import com.hermes.chat.data.model.Attachment
 import com.hermes.chat.data.model.ToolCall
 import com.hermes.chat.data.preferences.SettingsRepository
 import com.hermes.chat.databinding.ActivityChatBinding
@@ -50,17 +52,30 @@ class ChatActivity : AppCompatActivity() {
     private var suppressSlash = false
     /** 发送消息后强制滚动到底部（绕过 wasAtBottom 检查）。 */
     private var forceScrollToBottom = false
+    /** 上一个处于流式状态的助手消息 id，用于"完成态"重绑时仍能定位并切回 markdown。 */
+    private var lastStreamingId: String? = null
     /** 搜索跳转：待定位的消息 id（定位后清空）。 */
     private var pendingTargetId: String? = null
 
-    /** 文件选择器（点击曲别针按钮触发）。 */
+    /** 待发送附件（点击曲别针后累积，点发送时一并发出并清空）。 */
+    private val pendingAttachments = mutableListOf<Attachment>()
+
+    /** 文件选择器（点击曲别针按钮触发）：拷贝到私有目录并加入待发送列表。 */
     private val filePickerLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            uri?.let { selectedUri ->
-                val name = selectedUri.path?.substringAfterLast('/')
-                    ?: selectedUri.toString()
-                Toast.makeText(this, "已选择文件: $name", Toast.LENGTH_SHORT).show()
+            if (uri == null) return@registerForActivityResult
+            val att = Attachment.copyToInternal(this, uri)
+            if (att == null) {
+                Toast.makeText(this, R.string.attachment_copy_fail, Toast.LENGTH_SHORT).show()
+                return@registerForActivityResult
             }
+            // 大文件提醒（base64 后会显著膨胀，避免后端拒绝）
+            if (att.size > 20 * 1024 * 1024) {
+                Toast.makeText(this, R.string.attachment_too_large, Toast.LENGTH_SHORT).show()
+            }
+            pendingAttachments.add(att)
+            renderAttachments()
+            Toast.makeText(this, getString(R.string.attachment_added, att.name), Toast.LENGTH_SHORT).show()
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -137,11 +152,12 @@ class ChatActivity : AppCompatActivity() {
                 viewModel.saveDraft(s?.toString().orEmpty())
                 if (suppressSlash) return
 
-                // 键入 "/" 时显示内联斜杠命令半屏弹板，实时过滤候选
+                // 斜杠命令面板仅在输入框以 "/" 开头时激活，
+                // 避免会话正文中任意位置的 "/"（如 "https://..." / "请使用 /help"）误触发
                 val text = s?.toString().orEmpty()
-                if (text.contains("/")) {
-                    val lastSlash = text.lastIndexOf('/')
-                    val query = text.substring(lastSlash + 1)
+                if (text.startsWith("/")) {
+                    // 取首段（第一个空白符前）作为过滤词，命令后的参数不破坏实时筛选
+                    val query = text.substring(1).substringBefore(' ').trim()
                     showSlashInline(query)
                 } else {
                     hideSlashInline()
@@ -151,6 +167,18 @@ class ChatActivity : AppCompatActivity() {
         })
 
         binding.buttonSend.setOnClickListener { send() }
+        binding.buttonExpandInput.setOnClickListener {
+            // 弹出瞬间检测小输入框当前键盘是否可见（放大前状态）
+            val visRect = Rect()
+            binding.root.getWindowVisibleDisplayFrame(visRect)
+            val screenH = resources.displayMetrics.heightPixels
+            val keypadH = screenH - visRect.bottom
+            val keyboardOpen = keypadH > resources.displayMetrics.density * 120f
+            val dlg = ExpandedInputDialog.newInstance(
+                binding.editInput.text?.toString().orEmpty(), keyboardOpen
+            )
+            dlg.show(supportFragmentManager, "ExpandedInputDialog")
+        }
         binding.editInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_SEND) { send(); true } else false
         }
@@ -284,11 +312,20 @@ class ChatActivity : AppCompatActivity() {
         }
     }
 
-    /** 只刷新当前 streaming 的助手消息 item，避免全量刷新导致跳动 */
+    /**
+     * 只刷新（与流式状态相关的）助手消息 item，避免全量刷新导致跳动。
+     * 关键：streamingAssistantId 被 reset 清空为 null 时不能 early-return——
+     * 必须重绑「上一个流式 item」，否则完成态无法切回 markdown（一直卡在"正在回复"）。
+     */
     private fun notifyStreamingItemChanged() {
-        val sid = viewModel.streamingAssistantId.value ?: return
-        val pos = adapter.currentList.indexOfFirst { it.id == sid }
-        if (pos >= 0) adapter.notifyItemChanged(pos)
+        val sid = viewModel.streamingAssistantId.value
+        // id 变 null（完成）时回退到上一个流式 id 进行重绑
+        val target = sid ?: lastStreamingId
+        lastStreamingId = sid
+        if (target != null) {
+            val pos = adapter.currentList.indexOfFirst { it.id == target }
+            if (pos >= 0) adapter.notifyItemChanged(pos)
+        }
     }
 
     private fun updateRunModeMenuItem() {
@@ -371,13 +408,87 @@ class ChatActivity : AppCompatActivity() {
 
     private fun send() {
         val text = binding.editInput.text?.toString().orEmpty()
-        if (text.isBlank()) {
+        val atts = pendingAttachments.toList()
+        if (text.isBlank() && atts.isEmpty()) {
             Toast.makeText(this, R.string.toast_empty_input, Toast.LENGTH_SHORT).show()
             return
         }
         binding.editInput.text?.clear()
         forceScrollToBottom = true
-        viewModel.sendUserMessage(text)
+        pendingAttachments.clear()
+        renderAttachments()
+        viewModel.sendUserMessage(text, atts)
+    }
+
+    /** 刷新输入条上方的附件芯片行。 */
+    private fun renderAttachments() {
+        val container = binding.layoutAttachments
+        container.removeAllViews()
+        if (pendingAttachments.isEmpty()) {
+            container.visibility = View.GONE
+            return
+        }
+        container.visibility = View.VISIBLE
+        val ctx = this
+        pendingAttachments.forEachIndexed { idx, att ->
+            val chip = android.widget.TextView(ctx).apply {
+                text = "📎 ${att.name}"
+                textSize = 13f
+                setTextColor(ContextCompat.getColor(ctx, R.color.text_primary))
+                background = ContextCompat.getDrawable(ctx, R.drawable.bg_attachment_chip)
+                setPadding(
+                    (8 * resources.displayMetrics.density).toInt(),
+                    (4 * resources.displayMetrics.density).toInt(),
+                    (8 * resources.displayMetrics.density).toInt(),
+                    (4 * resources.displayMetrics.density).toInt()
+                )
+                // 点击右侧"×"移除单个附件
+                setOnLongClickListener { removeAttachment(idx); true }
+                contentDescription = getString(R.string.attachment_chip, att.name)
+            }
+            val params = ViewGroup.MarginLayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { marginEnd = (8 * resources.displayMetrics.density).toInt() }
+            container.addView(chip, params)
+        }
+        // 末尾加一个"× 清除全部"按钮
+        val clear = android.widget.TextView(ctx).apply {
+            text = "✕"
+            textSize = 13f
+            setTextColor(ContextCompat.getColor(ctx, R.color.unread_red))
+            background = ContextCompat.getDrawable(ctx, R.drawable.bg_attachment_chip)
+            setPadding(
+                (10 * resources.displayMetrics.density).toInt(),
+                (4 * resources.displayMetrics.density).toInt(),
+                (10 * resources.displayMetrics.density).toInt(),
+                (4 * resources.displayMetrics.density).toInt()
+            )
+            setOnClickListener { pendingAttachments.clear(); renderAttachments() }
+            contentDescription = getString(R.string.attachment_clear_all)
+        }
+        container.addView(clear)
+    }
+
+    /** 移除第 [idx] 个待发送附件。 */
+    private fun removeAttachment(idx: Int) {
+        if (idx in pendingAttachments.indices) {
+            pendingAttachments.removeAt(idx)
+            renderAttachments()
+        }
+    }
+
+    /** 放大输入框关闭（未发送）：把大框文本回写小输入框并保存草稿，避免丢失。 */
+    fun onExpandedClose(text: String) {
+        binding.editInput.setText(text)
+        binding.editInput.setSelection(text.length)
+        viewModel.saveDraft(text)
+    }
+
+    /** 放大输入框直接发送：回写后复用既有发送逻辑（清空 + 落库 + 滚动）。 */
+    fun onExpandedSend(text: String) {
+        binding.editInput.setText(text)
+        send()
     }
 
     /** 显示内联斜杠命令半屏弹板，按 [query] 实时过滤。 */

@@ -4,6 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.hermes.chat.data.model.Attachment
 import com.hermes.chat.data.model.ToolCall
 import com.hermes.chat.data.model.toolCallsFromJson
 
@@ -34,13 +35,19 @@ data class MessageEntity(
     val toolCallsJson: String = "",
     /** 是否仍在流式输出中（由前台 Service 持有）。用于页面切换/重进时区分"进行中"与"空气泡"。 */
     @ColumnInfo(defaultValue = "0")
-    val isStreaming: Boolean = false
+    val isStreaming: Boolean = false,
+    /** 附件列表 JSON（见 [Attachment]）。仅 user 消息有意义，空串表示无附件。 */
+    @ColumnInfo(defaultValue = "")
+    val attachmentsJson: String = ""
 ) {
     fun options(): List<String> =
         if (optionsJson.isBlank()) emptyList()
         else optionsJson.split("\n").filter { it.isNotBlank() }
 
     fun toolCalls(): List<ToolCall> = toolCallsFromJson(toolCallsJson)
+
+    /** 反序列化附件列表（空串返回空列表）。 */
+    fun attachments(): List<Attachment> = Attachment.listFromJson(attachmentsJson)
 
     companion object {
         const val ROLE_USER = "user"

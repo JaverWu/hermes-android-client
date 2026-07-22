@@ -16,6 +16,14 @@
     <string name="action_delete">删除</string>
     <string name="action_send">发送</string>
     <string name="action_attach">附件</string>
+    <string name="attachment_added">已添加附件：%1$s</string>
+    <string name="attachment_copy_fail">无法读取该文件，请重试</string>
+    <string name="attachment_too_large">文件超过 20MB，后端可能拒绝</string>
+    <string name="attachment_chip">附件：%1$s（长按移除）</string>
+    <string name="attachment_clear_all">清除全部附件</string>
+    <string name="action_expand_input">放大输入</string>
+    <string name="expanded_input_title">输入消息</string>
+    <string name="close">关闭</string>
     <string name="action_edit_avatar">编辑头像</string>
 
     <string name="hint_input">输入消息…</string>

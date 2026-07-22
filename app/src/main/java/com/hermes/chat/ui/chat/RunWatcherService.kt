@@ -295,8 +295,8 @@ class RunWatcherService : Service() {
             if (m.id == assistantId) continue  // 跳过当前 streaming 占位，避免部分回复污染历史
             when (m.role) {
                 MessageEntity.ROLE_USER -> {
-                    Log.i("RunWatcher", "  user msg: ${m.content.take(40)}...")
-                    list.add(ChatMessage("user", m.content))
+                    Log.i("RunWatcher", "  user msg: ${m.content.take(40)}... (${m.attachments().size} attachments)")
+                    list.add(ChatMessage("user", m.content, m.attachments()))
                 }
                 MessageEntity.ROLE_ASSISTANT ->
                     if (m.content.isNotBlank()) list.add(ChatMessage("assistant", m.content))

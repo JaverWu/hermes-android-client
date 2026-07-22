@@ -129,6 +129,30 @@ class MessageAdapter(
                     holder.binding.textAvatarLetter.text = user.glyph
                 }
                 holder.binding.textMessage.text = item.content
+                // 附件回显（仅 user 消息携带）
+                val atts = item.attachments()
+                val attBox = holder.binding.layoutAttachmentsUser
+                attBox.removeAllViews()
+                if (atts.isNotEmpty()) {
+                    attBox.visibility = View.VISIBLE
+                    val dp = ctx.resources.displayMetrics.density
+                    atts.forEach { att ->
+                        val chip = android.widget.TextView(ctx).apply {
+                            text = "📎 ${att.name}"
+                            textSize = 13f
+                            setTextColor(ContextCompat.getColor(ctx, R.color.bubble_out_text))
+                            background = ContextCompat.getDrawable(ctx, R.drawable.bg_attachment_chip)
+                            setPadding((8 * dp).toInt(), (4 * dp).toInt(), (8 * dp).toInt(), (4 * dp).toInt())
+                        }
+                        val lp = ViewGroup.MarginLayoutParams(
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                        ).apply { bottomMargin = (4 * dp).toInt() }
+                        attBox.addView(chip, lp)
+                    }
+                } else {
+                    attBox.visibility = View.GONE
+                }
                 holder.binding.textTime.text = formatTime(item.createdAt)
             }
             is AssistantVH -> {
@@ -136,7 +160,10 @@ class MessageAdapter(
                 AvatarLoader.loadCircular(holder.binding.imageAvatar, R.drawable.ic_logo_large)
                 holder.binding.textAvatarLetter.visibility = View.GONE
 
-                val isStreamingThis = item.id == streamingAssistantId
+                // 完成判定：必须同时满足「是 ActiveRunState 标记的流式消息」且「DB 行 isStreaming 仍为 true」。
+                // finalizeTurn 把 DB 行 isStreaming 置 false 后，即便 streamingAssistantId 尚未被 reset 清空，
+                // 也立即切回完成态（markdown 渲染、隐藏颜文字），避免"已回复完却一直显示正在回复"的竞态卡死。
+                val isStreamingThis = item.id == streamingAssistantId && item.isStreaming
                 val live = if (isStreamingThis) liveContent else item.content
                 val hasLive = live.isNotBlank()
 

@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 5/6 屏放大输入框（参考微信对话框放大）：底部上滑 + 缩放进入，输入法常驻 -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent"
+    android:fitsSystemWindows="true">
+
+    <!-- 背景遮罩（点击关闭，alpha 由代码渐显） -->
+    <View
+        android:id="@+id/scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#000000"
+        android:clickable="true"
+        android:focusable="true" />
+
+    <!-- 容器：顶部 1/6 留白（透出遮罩）+ 底部 5/6 卡片，权重布局随输入法自适应 -->
+    <LinearLayout
+        android:id="@+id/container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <!-- 5/6 高底部卡片，圆角在顶部，缩放进入 -->
+        <LinearLayout
+            android:id="@+id/card"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="5"
+            android:orientation="vertical"
+            android:background="@drawable/bg_expanded_card"
+            android:elevation="8dp">
+
+            <!-- 顶部操作栏：关闭 × / 标题 / 发送（参考微信对话框放大） -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="?attr/actionBarSize"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@color/toolbar_bg"
+                android:paddingStart="@dimen/space_md"
+                android:paddingEnd="@dimen/space_md">
+
+                <ImageButton
+                    android:id="@+id/buttonClose"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/close"
+                    android:src="@drawable/ic_close"
+                    app:tint="@color/text_primary" />
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="@string/expanded_input_title"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium"
+                    android:textColor="@color/text_primary" />
+
+                <TextView
+                    android:id="@+id/textSend"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="4dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:text="@string/action_send"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/tg_blue"
+                    android:contentDescription="@string/action_send" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:background="@color/toolbar_border" />
+
+            <!-- 大输入框：顶对齐、可滚动、大字号，支持长文 -->
+            <EditText
+                android:id="@+id/editExpanded"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:gravity="top"
+                android:hint="@string/hint_input"
+                android:inputType="textMultiLine|textCapSentences"
+                android:textSize="18sp"
+                android:lineSpacingExtra="4dp"
+                android:textColor="@color/text_primary"
+                android:textColorHint="@color/text_tertiary"
+                android:paddingStart="@dimen/space_lg"
+                android:paddingEnd="@dimen/space_lg"
+                android:paddingTop="@dimen/space_lg"
+                android:paddingBottom="@dimen/space_lg"
+                android:scrollbars="vertical" />
+
+            <!-- 字数统计 -->
+            <TextView
+                android:id="@+id/textCount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:textColor="@color/text_tertiary"
+                android:textSize="12sp"
+                android:paddingEnd="@dimen/space_lg"
+                android:paddingBottom="@dimen/space_md" />
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

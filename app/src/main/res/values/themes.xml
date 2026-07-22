@@ -88,4 +88,13 @@
         <item name="cardElevation">0dp</item>
         <item name="cardMaxElevation">0dp</item>
     </style>
+
+    <!-- 放大输入框：3/4 屏底部对话框（参考微信对话框放大）+ 缩放动画 -->
+    <style name="Theme.HermesChat.ExpandedInput" parent="Theme.HermesChat">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
 </resources>

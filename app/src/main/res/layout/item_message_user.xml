@@ -21,6 +21,14 @@
             android:gravity="bottom"
             android:layout_marginEnd="@dimen/space_md">
 
+            <!-- 附件列表（发送成功的消息回显） -->
+            <LinearLayout
+                android:id="@+id/layoutAttachmentsUser"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone" />
+
             <TextView
                 android:id="@+id/textMessage"
                 android:layout_width="wrap_content"

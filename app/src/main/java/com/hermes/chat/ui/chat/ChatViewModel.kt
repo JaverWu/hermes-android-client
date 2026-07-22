@@ -14,6 +14,7 @@ import com.hermes.chat.HermesApplication
 import com.hermes.chat.data.local.AppDatabase
 import com.hermes.chat.data.local.ConversationEntity
 import com.hermes.chat.data.local.MessageEntity
+import com.hermes.chat.data.model.Attachment
 import com.hermes.chat.data.model.ToolCall
 import com.hermes.chat.data.preferences.SettingsRepository
 import kotlinx.coroutines.Dispatchers
@@ -104,9 +105,9 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
     // ===================== 发送 =====================
 
-    fun sendUserMessage(text: String) {
+    fun sendUserMessage(text: String, attachments: List<Attachment> = emptyList()) {
         val content = text.trim()
-        if (content.isEmpty()) return
+        if (content.isEmpty() && attachments.isEmpty()) return
         if (ActiveRunState.isStreaming.value) {
             // 上一次 Service 被 cancel 时可能没调 reset()，isStreaming 卡在 true
             // 检查是否真的有 Service 在跑：如果没有，强制 reset 并继续
@@ -130,7 +131,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 conversationId = cid,
                 role = MessageEntity.ROLE_USER,
                 content = content,
-                createdAt = now()
+                createdAt = now(),
+                attachmentsJson = Attachment.listToJson(attachments)
             )
             db.messageDao().insert(userMsg)
             appendMessage(userMsg)

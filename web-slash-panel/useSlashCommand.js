@@ -59,15 +59,13 @@ export function useSlashCommand() {
   function handleInput(value, caret) {
     const before = value.slice(0, caret);
     const slashIdx = before.lastIndexOf('/');
-    // 触发条件："/" 在行首或前一个是空白，且 "/" 之后还没有空格（空格视为普通文本）
-    const okTrigger =
-      slashIdx !== -1 &&
-      (slashIdx === 0 || /\s/.test(before[slashIdx - 1])) &&
-      !before.slice(slashIdx + 1).includes(' ');
+    // 触发条件：仅当输入以 "/" 开头时激活，不在会话正文中（如空格后）触发
+    const okTrigger = slashIdx === 0;
 
     if (okTrigger) {
       triggerPos = slashIdx;
-      query.value = before.slice(slashIdx + 1);
+      // 取首段（第一个空白符前）作为过滤词，命令后的参数不破坏实时筛选
+      query.value = before.slice(1).split(/\s/)[0];
       activeIndex.value = 0;
       open.value = true;
     } else {
