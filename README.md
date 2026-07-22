@@ -17,6 +17,12 @@
   关闭 App 后再次打开可恢复历史。
 - ⚙️ **可配置连接**：API Base URL、API Key、模型名、系统提示词均在 App 内「设置」页填写。
 
+##食用方法
+###进入hermes webui界面的channels下的api srever：<img width="1105" height="594" alt="image" src="https://github.com/user-attachments/assets/b68d0cff-d622-4a4b-86bb-0d89b9abb26a" />
+###api server填写方法：<img width="502" height="681" alt="image" src="https://github.com/user-attachments/assets/6b17bd8e-db16-4a95-bf13-a5aa5eb06281" />
+###手机客户端填写方法：<img width="311" height="467" alt="image" src="https://github.com/user-attachments/assets/5d95a57a-9828-4daf-b5d7-2be3bb6fa300" />
+
+
 ## 构建与运行
 
 > ⚠️ 本仓库在一台没有 Android SDK 的机器上生成，未做编译验证。请用 **Android Studio（Hedgehog / Iguana 及以上）** 打开并构建。
@@ -45,37 +51,6 @@
 | 系统提示词 | 可选，作为 `system` 角色注入 | — |
 
 > 应用会向 `{BaseURL}/chat/completions` 发送请求。
-
-
-## 审批事件协议
-
-App 同时支持两种下发方式（二选一或并存）：
-
-### 1. 结构化 SSE 事件（推荐）
-
-后端在流式响应里下发一个**命名事件**：
-
-```
-event: approval_request
-data: {"id":"r1","title":"需要执行命令","detail":"npm install","options":["/approve","/approve session","/deny"]}
-```
-
-App 解析后渲染成卡片 + 按钮；点击任一选项即把该字符串（如 `/approve`）作为用户消息回传。
-
-### 2. 文本兜底检测
-
-如果后端只是在回复正文里写了类似：
-
-```
-我将执行：npm install
-可选操作：/approve  /approve session  /deny
-```
-
-App 会自动识别正文中的多个 `/xxx` 指令（如 `/approve`、`/approve session`、`/deny`、`/reject`），
-当命中 ≥ 2 个不同指令时，把它们渲染成可点击按钮。匹配规则见
-`app/src/main/java/com/hermes/chat/data/remote/ApprovalDetector.kt`，可按需修改正则。
-
-> 如果你只想用结构化事件、不要文本兜底，把 `ApprovalDetector.detect` 直接 `return emptyList()` 即可。
 
 ## 目录结构
 
