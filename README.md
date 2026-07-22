@@ -17,7 +17,7 @@
   关闭 App 后再次打开可恢复历史。
 - ⚙️ **可配置连接**：API Base URL、API Key、模型名、系统提示词均在 App 内「设置」页填写。
 
-##食用方法
+## 食用方法
 ### 进入hermes webui界面的channels下的api srever：<img width="1105" height="594" alt="image" src="https://github.com/user-attachments/assets/b68d0cff-d622-4a4b-86bb-0d89b9abb26a" />
 ### api server填写方法：<img width="502" height="681" alt="image" src="https://github.com/user-attachments/assets/6b17bd8e-db16-4a95-bf13-a5aa5eb06281" />
 ### 手机客户端填写方法：<img width="311" height="467" alt="image" src="https://github.com/user-attachments/assets/5d95a57a-9828-4daf-b5d7-2be3bb6fa300" />
